@@ -6,6 +6,7 @@ import Catalogo from './pages/Catalogo.jsx'
 import Admin from './pages/Admin.jsx'
 import Navbar from './components/Navbar.jsx'
 import AdminLogin from './pages/AdminLogin.jsx'
+import AdminProductos from './pages/AdminProductos.jsx'
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
         <Route path="/catalogo" element={<Catalogo />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="/admin-login" element={<AdminLogin />} />
+        <Route path="/admin-productos" element={<AdminProductos />} />
       </Routes>
     </div>
   )

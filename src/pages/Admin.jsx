@@ -192,9 +192,14 @@ function Admin() {
     <div className="p-6 max-w-2xl mx-auto">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-xl font-bold">Panel de administración</h1>
-        <button onClick={cerrarSesion} className="text-sm text-gray-500 underline">
-          Cerrar sesión
-        </button>
+        <div className="flex gap-3">
+          <button onClick={() => navigate('/admin-productos')} className="text-sm text-blue-600 underline">
+            Productos
+          </button>
+          <button onClick={cerrarSesion} className="text-sm text-gray-500 underline">
+            Cerrar sesión
+          </button>
+        </div>
       </div>
 
       <h2 className="text-sm font-medium mb-2">Estado de barberos</h2>
