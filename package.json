@@ -12,6 +12,8 @@
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
     "autoprefixer": "^10.5.4",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^16.6.1",
     "postcss": "^8.5.20",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
