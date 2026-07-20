@@ -32,7 +32,7 @@ function Admin() {
   const cargarCitas = () => {
     setCargando(true)
     setError(null)
-    fetch(`/api/citas-dia?fecha=${fecha}`)
+    fetch(`/api/citas?accion=dia&fecha=${fecha}`)
       .then((res) => res.json())
       .then((data) => {
         if (data.error) throw new Error(data.error)
@@ -66,7 +66,7 @@ function Admin() {
     if (avisoResultado.respuesta) return
 
     const revisar = () => {
-      fetch(`/api/estado-aviso?notificacion_id=${avisoResultado.notificacion_id}`)
+      fetch(`/api/avisos?accion=estado&notificacion_id=${avisoResultado.notificacion_id}`)
         .then((res) => res.json())
         .then((data) => {
           if (data.respuesta) {
@@ -129,7 +129,7 @@ function Admin() {
         body.nombre = walkInNombre.trim()
         body.telefono = walkInTelefono.trim()
       }
-      const res = await fetch('/api/walk-in', {
+      const res = await fetch('/api/citas?accion=walkin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -153,7 +153,7 @@ function Admin() {
     setError(null)
     setAvisoResultado(null)
     try {
-      const res = await fetch('/api/avisar-siguiente', {
+      const res = await fetch('/api/avisos?accion=avisar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ barbero_id, fecha: hoyColombia() }),

@@ -14,13 +14,11 @@ function Citas() {
   const [mensaje, setMensaje] = useState('')
   const [confirmada, setConfirmada] = useState(null)
 
-  // Aviso del barbero
   const [aviso, setAviso] = useState(null)
   const [avisoRespondido, setAvisoRespondido] = useState(false)
 
   const navigate = useNavigate()
 
-  // Verificar que haya un cliente logueado
   useEffect(() => {
     const guardado = localStorage.getItem('cliente')
     if (!guardado) {
@@ -30,7 +28,6 @@ function Citas() {
     setCliente(JSON.parse(guardado))
   }, [navigate])
 
-  // Cargar barberos
   useEffect(() => {
     fetch('/api/barberos')
       .then((res) => res.json())
@@ -38,7 +35,6 @@ function Citas() {
       .catch(() => setMensaje('No se pudieron cargar los barberos'))
   }, [])
 
-  // Cuando cambia barbero o fecha, buscar horarios disponibles
   useEffect(() => {
     if (!barberoSel || !fecha) {
       setHorarios([])
@@ -46,7 +42,7 @@ function Citas() {
     }
     setCargando(true)
     setHoraSel(null)
-    fetch(`/api/disponibilidad?barbero_id=${barberoSel}&fecha=${fecha}`)
+    fetch(`/api/citas?accion=disponibilidad&barbero_id=${barberoSel}&fecha=${fecha}`)
       .then((res) => res.json())
       .then((data) => {
         setHorarios(data.disponibles || [])
@@ -59,13 +55,12 @@ function Citas() {
       })
   }, [barberoSel, fecha])
 
-  // Escuchar avisos del barbero (polling cada 20s)
   useEffect(() => {
     if (!cliente) return
 
     const revisarAviso = () => {
       const hoy = hoyColombia()
-      fetch(`/api/mi-aviso?cliente_id=${cliente.id}&fecha=${hoy}`)
+      fetch(`/api/avisos?accion=mi-aviso&cliente_id=${cliente.id}&fecha=${hoy}`)
         .then((res) => res.json())
         .then((data) => {
           if (data.aviso && (!aviso || aviso.notificacion_id !== data.aviso.notificacion_id)) {
@@ -88,7 +83,7 @@ function Citas() {
   const responderAviso = async (respuesta) => {
     if (!aviso) return
     try {
-      await fetch('/api/responder-aviso', {
+      await fetch('/api/avisos?accion=responder', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notificacion_id: aviso.notificacion_id, respuesta }),
@@ -108,7 +103,7 @@ function Citas() {
     setCargando(true)
     setMensaje('')
     try {
-      const res = await fetch('/api/crear-cita', {
+      const res = await fetch('/api/citas?accion=crear', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -130,7 +125,6 @@ function Citas() {
 
   const hoy = hoyColombia()
 
-  // Banner de aviso del barbero (aparece encima de todo)
   const bannerAviso = aviso && (
     <div className="fixed inset-x-0 top-0 z-50 bg-amber-500 text-white p-4 shadow-lg">
       <div className="max-w-md mx-auto text-center">
@@ -169,7 +163,7 @@ function Citas() {
         <div className="text-5xl mb-4">✅</div>
         <h1 className="text-xl font-bold mb-2">¡Cita confirmada!</h1>
         <p className="text-gray-600">
-          Te esperamos el {confirmada.fecha} a las {confirmada.hora}.
+          Te esperamos el {String(confirmada.fecha).split('T')[0].split('-').reverse().join('/')} a las {confirmada.hora}.
         </p>
         <button
           onClick={() => {
@@ -206,7 +200,6 @@ function Citas() {
         🔔 Activar notificaciones
       </button>
 
-      {/* Paso 1: elegir barbero */}
       <label className="block text-sm font-medium mb-2">1. Elige tu barbero</label>
       <div className="grid grid-cols-2 gap-3 mb-5">
         {barberos.map((b) => (
@@ -225,7 +218,6 @@ function Citas() {
         ))}
       </div>
 
-      {/* Paso 2: elegir fecha */}
       <label className="block text-sm font-medium mb-2">2. Elige la fecha</label>
       <input
         type="date"
@@ -235,7 +227,6 @@ function Citas() {
         className="w-full border rounded px-3 py-2 mb-5"
       />
 
-      {/* Paso 3: elegir hora */}
       {barberoSel && fecha && (
         <>
           <label className="block text-sm font-medium mb-2">3. Elige la hora</label>
@@ -265,7 +256,6 @@ function Citas() {
         <p className="text-red-500 text-sm mb-3">{mensaje}</p>
       )}
 
-      {/* Botón confirmar */}
       {horaSel && (
         <button
           onClick={confirmarCita}
