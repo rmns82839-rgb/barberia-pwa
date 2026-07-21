@@ -164,7 +164,7 @@ function Admin() {
       } else {
         const tel = data.cita.cliente_telefono.replace(/\D/g, '')
         const texto = encodeURIComponent(
-          `Hola ${data.cita.cliente_nombre}, tu turno en la barbería está por comenzar (${data.cita.hora}). ¿Confirmas que llegas en los próximos 10-15 minutos?`
+          `✂️ ¡Hola ${data.cita.cliente_nombre}! 👋 Tu turno en la barbería está por comenzar a las ${data.cita.hora} ⏰. ¿Confirmas que llegas en los próximos 10-15 minutos? 🙌`
         )
         const link = `https://wa.me/57${tel}?text=${texto}`
         setAvisoResultado({
