@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 import { hoyColombia } from '../lib/fechas.js'
 import { pedirPermisoNotificaciones, mostrarNotificacion } from '../lib/notificaciones.js'
 
 function Citas() {
-  const [cliente, setCliente] = useState(null)
+  const { cliente, cargando: cargandoAuth } = useAuth()
   const [barberos, setBarberos] = useState([])
   const [barberoSel, setBarberoSel] = useState(null)
   const [fecha, setFecha] = useState('')
@@ -20,13 +21,11 @@ function Citas() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    const guardado = localStorage.getItem('cliente')
-    if (!guardado) {
+    if (cargandoAuth) return
+    if (!cliente) {
       navigate('/login')
-      return
     }
-    setCliente(JSON.parse(guardado))
-  }, [navigate])
+  }, [cliente, cargandoAuth, navigate])
 
   useEffect(() => {
     fetch('/api/barberos')
@@ -60,7 +59,7 @@ function Citas() {
 
     const revisarAviso = () => {
       const hoy = hoyColombia()
-      fetch(`/api/avisos?accion=mi-aviso&cliente_id=${cliente.id}&fecha=${hoy}`)
+      fetch(`/api/citas?accion=mi-aviso&cliente_id=${cliente.id}&fecha=${hoy}`)
         .then((res) => res.json())
         .then((data) => {
           if (data.aviso && (!aviso || aviso.notificacion_id !== data.aviso.notificacion_id)) {
@@ -83,7 +82,7 @@ function Citas() {
   const responderAviso = async (respuesta) => {
     if (!aviso) return
     try {
-      await fetch('/api/avisos?accion=responder', {
+      await fetch('/api/citas?accion=responder-aviso', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notificacion_id: aviso.notificacion_id, respuesta }),
@@ -155,6 +154,10 @@ function Citas() {
       </div>
     </div>
   )
+
+  if (cargandoAuth || !cliente) {
+    return null
+  }
 
   if (confirmada) {
     return (

@@ -10,7 +10,8 @@ function Login() {
   const navigate = useNavigate()
   const { loginCliente } = useAuth()
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e) => {
+    e.preventDefault()
     setError(null)
 
     if (!nombre.trim() || !telefono.trim()) {
@@ -45,7 +46,7 @@ function Login() {
         Ingresa tus datos para agendar tu cita.
       </p>
 
-      <div className="space-y-3">
+      <form onSubmit={handleSubmit} className="space-y-3">
         <input
           type="text"
           placeholder="Tu nombre"
@@ -64,13 +65,13 @@ function Login() {
         {error && <p className="text-red-500 text-sm">{error}</p>}
 
         <button
-          onClick={handleSubmit}
+          type="submit"
           disabled={cargando}
           className="w-full bg-gray-900 text-white rounded px-3 py-2 disabled:opacity-50"
         >
           {cargando ? 'Entrando...' : 'Ingresar'}
         </button>
-      </div>
+      </form>
 
       <div className="mt-6 border-t pt-4 text-center">
         <p className="text-sm text-gray-600">
