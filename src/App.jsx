@@ -10,6 +10,8 @@ import Navbar from './components/Navbar.jsx'
 import AdminLogin from './pages/AdminLogin.jsx'
 import AdminProductos from './pages/AdminProductos.jsx'
 import AdminClientes from './pages/AdminClientes.jsx'
+import BarberoLogin from './pages/BarberoLogin.jsx'
+import BarberoGaleria from './pages/BarberoGaleria.jsx'
 import { obtenerTema, aplicarTema } from './lib/tema.js'
 
 const variantesPagina = {
@@ -38,6 +40,8 @@ function App() {
           <Route path="/admin-login" element={<PaginaAnimada><AdminLogin /></PaginaAnimada>} />
           <Route path="/admin-productos" element={<PaginaAnimada><AdminProductos /></PaginaAnimada>} />
           <Route path="/admin-clientes" element={<PaginaAnimada><AdminClientes /></PaginaAnimada>} />
+          <Route path="/barbero-login" element={<PaginaAnimada><BarberoLogin /></PaginaAnimada>} />
+          <Route path="/barbero-galeria" element={<PaginaAnimada><BarberoGaleria /></PaginaAnimada>} />
         </Routes>
       </AnimatePresence>
     </div>

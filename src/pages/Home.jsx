@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
-import { Scissors, Star, MessageSquarePlus } from 'lucide-react'
+import { Scissors, Star, MessageSquarePlus, Images } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import Modal from '../components/Modal.jsx'
@@ -44,6 +44,8 @@ function Home() {
   const [calificacion, setCalificacion] = useState(0)
   const [comentario, setComentario] = useState('')
   const [enviando, setEnviando] = useState(false)
+  const [modalGaleria, setModalGaleria] = useState(null)
+  const [fotosGaleria, setFotosGaleria] = useState([])
 
   useEffect(() => {
     fetch('/api/barberos')
@@ -69,6 +71,14 @@ function Home() {
         setRatings((prev) => ({ ...prev, [barbero_id]: data }))
       })
       .catch(() => {})
+  }
+
+  const abrirGaleria = (barbero_id) => {
+    setModalGaleria(barbero_id)
+    fetch(`/api/galeria?barbero_id=${barbero_id}`)
+      .then((res) => res.json())
+      .then((data) => setFotosGaleria(data.fotos || []))
+      .catch(() => toast.error('No se pudo cargar la galería'))
   }
 
   const abrirModalResena = (barbero_id) => {
@@ -166,8 +176,16 @@ function Home() {
                 )}
 
                 <button
+                  onClick={() => abrirGaleria(barbero.id)}
+                  className="mt-2 flex items-center gap-1 text-xs text-gray-600 font-medium"
+                >
+                  <Images size={14} />
+                  Ver trabajos
+                </button>
+
+                <button
                   onClick={() => abrirModalResena(barbero.id)}
-                  className="mt-3 flex items-center gap-1 text-xs text-blue-600 font-medium"
+                  className="mt-1 flex items-center gap-1 text-xs text-blue-600 font-medium"
                 >
                   <MessageSquarePlus size={14} />
                   Dejar reseña
@@ -200,6 +218,31 @@ function Home() {
             {enviando ? 'Enviando...' : 'Enviar reseña'}
           </button>
         </div>
+      </Modal>
+
+      <Modal
+        open={modalGaleria != null}
+        onClose={() => setModalGaleria(null)}
+        title="Trabajos del barbero"
+      >
+        {fotosGaleria.length === 0 ? (
+          <p className="text-sm text-gray-500">Aún no ha subido fotos de sus trabajos.</p>
+        ) : (
+          <div className="grid grid-cols-3 gap-2">
+            {fotosGaleria.map((f) => (
+              <div key={f.id}>
+                <div className="aspect-square rounded-lg overflow-hidden">
+                  <img src={f.imagen_url} alt={f.descripcion || 'Trabajo'} className="w-full h-full object-cover" />
+                </div>
+                {f.descripcion && (
+                  <p className="text-xs text-gray-600 mt-1 truncate" title={f.descripcion}>
+                    {f.descripcion}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </Modal>
     </div>
   )

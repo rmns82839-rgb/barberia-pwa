@@ -5,6 +5,7 @@ const AuthContext = createContext(null)
 export function AuthProvider({ children }) {
   const [admin, setAdmin] = useState(null)
   const [cliente, setCliente] = useState(null)
+  const [barbero, setBarbero] = useState(null)
   const [cargando, setCargando] = useState(true)
 
   useEffect(() => {
@@ -13,6 +14,7 @@ export function AuthProvider({ children }) {
       .then((data) => {
         setAdmin(data.admin || null)
         setCliente(data.cliente || null)
+        setBarbero(data.barbero || null)
       })
       .catch(() => {})
       .finally(() => setCargando(false))
@@ -20,6 +22,7 @@ export function AuthProvider({ children }) {
 
   const loginAdmin = (data) => setAdmin(data.admin)
   const loginCliente = (clienteData) => setCliente(clienteData)
+  const loginBarbero = (data) => setBarbero(data.barbero)
 
   const logoutAdmin = async () => {
     await fetch('/api/auth?action=logout', { method: 'POST', credentials: 'include' })
@@ -29,9 +32,19 @@ export function AuthProvider({ children }) {
     await fetch('/api/auth?action=logout', { method: 'POST', credentials: 'include' })
     setCliente(null)
   }
+  const logoutBarbero = async () => {
+    await fetch('/api/auth?action=logout', { method: 'POST', credentials: 'include' })
+    setBarbero(null)
+  }
 
   return (
-    <AuthContext.Provider value={{ admin, cliente, cargando, loginAdmin, loginCliente, logoutAdmin, logoutCliente }}>
+    <AuthContext.Provider
+      value={{
+        admin, cliente, barbero, cargando,
+        loginAdmin, loginCliente, loginBarbero,
+        logoutAdmin, logoutCliente, logoutBarbero,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )

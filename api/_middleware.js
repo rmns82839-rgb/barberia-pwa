@@ -44,6 +44,7 @@ export function verificarSesion(req) {
   return {
     admin: verificarToken(req, 'admin_session'),
     cliente: verificarToken(req, 'cliente_session'),
+    barbero: verificarToken(req, 'barbero_session'),
   }
 }
 
@@ -61,4 +62,12 @@ export async function requireCliente(req, res) {
   const clientes = await sql`SELECT id FROM clientes WHERE id = ${cliente.id}`
   if (clientes.length === 0) { res.status(401).json({ error: 'Usuario no encontrado' }); return null }
   return cliente
+}
+
+export async function requireBarbero(req, res) {
+  const barbero = verificarToken(req, 'barbero_session')
+  if (!barbero) { res.status(401).json({ error: 'No autorizado' }); return null }
+  const barberos = await sql`SELECT id FROM barberos WHERE id = ${barbero.id}`
+  if (barberos.length === 0) { res.status(401).json({ error: 'Barbero no encontrado' }); return null }
+  return barbero
 }
