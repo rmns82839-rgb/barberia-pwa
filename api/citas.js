@@ -13,6 +13,17 @@ function leerBody(req) {
   })
 }
 
+function hoyColombia() {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" })
+}
+
+function horaActualColombia() {
+  return new Date().toLocaleTimeString("en-GB", {
+    timeZone: "America/Bogota",
+    hour12: false,
+  }).slice(0, 5)
+}
+
 export default async function handler(req, res) {
   try {
     const sql = neon(process.env.DATABASE_URL)
@@ -104,7 +115,13 @@ export default async function handler(req, res) {
           AND estado != 'cancelada'
       `
       const horasOcupadas = ocupadas.map((o) => o.hora)
-      const disponibles = bloques.filter((b) => !horasOcupadas.includes(b))
+      let disponibles = bloques.filter((b) => !horasOcupadas.includes(b))
+
+      if (fecha === hoyColombia()) {
+        const horaActual = horaActualColombia()
+        disponibles = disponibles.filter((b) => b > horaActual)
+      }
+
       return res.status(200).json({ disponibles })
     }
 

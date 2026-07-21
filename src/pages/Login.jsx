@@ -1,21 +1,21 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
+import { Loader2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 function Login() {
   const [nombre, setNombre] = useState('')
   const [telefono, setTelefono] = useState('')
   const [cargando, setCargando] = useState(false)
-  const [error, setError] = useState(null)
   const navigate = useNavigate()
   const { loginCliente } = useAuth()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setError(null)
 
     if (!nombre.trim() || !telefono.trim()) {
-      setError('Por favor ingresa tu nombre y número de WhatsApp')
+      toast.error('Por favor ingresa tu nombre y número de WhatsApp')
       return
     }
 
@@ -31,9 +31,10 @@ function Login() {
       if (!res.ok) throw new Error(data.error || 'Error al iniciar sesión')
 
       loginCliente(data.cliente)
+      toast.success(`¡Bienvenido, ${data.cliente.nombre}!`)
       navigate('/citas')
     } catch (err) {
-      setError(err.message)
+      toast.error(err.message)
     } finally {
       setCargando(false)
     }
@@ -52,23 +53,22 @@ function Login() {
           placeholder="Tu nombre"
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
-          className="w-full border rounded px-3 py-2"
+          className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-900"
         />
         <input
           type="tel"
           placeholder="Número de WhatsApp"
           value={telefono}
           onChange={(e) => setTelefono(e.target.value)}
-          className="w-full border rounded px-3 py-2"
+          className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-900"
         />
-
-        {error && <p className="text-red-500 text-sm">{error}</p>}
 
         <button
           type="submit"
           disabled={cargando}
-          className="w-full bg-gray-900 text-white rounded px-3 py-2 disabled:opacity-50"
+          className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white rounded-lg px-3 py-2.5 font-medium transition active:scale-95 disabled:opacity-50 disabled:active:scale-100"
         >
+          {cargando && <Loader2 size={18} className="animate-spin" />}
           {cargando ? 'Entrando...' : 'Ingresar'}
         </button>
       </form>

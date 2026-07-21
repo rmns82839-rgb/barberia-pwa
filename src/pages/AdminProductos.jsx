@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
+import { Pencil, Trash2, Loader2, ImagePlus } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import Modal from '../components/Modal.jsx'
 
 function AdminProductos() {
   const { admin } = useAuth()
   const [productos, setProductos] = useState([])
   const [cargando, setCargando] = useState(true)
-  const [error, setError] = useState(null)
 
   const [editandoId, setEditandoId] = useState(null)
   const [nombre, setNombre] = useState('')
@@ -15,6 +17,7 @@ function AdminProductos() {
   const [imagenUrl, setImagenUrl] = useState('')
   const [subiendoFoto, setSubiendoFoto] = useState(false)
   const [guardando, setGuardando] = useState(false)
+  const [aBorrar, setABorrar] = useState(null)
 
   const navigate = useNavigate()
 
@@ -33,7 +36,7 @@ function AdminProductos() {
         setCargando(false)
       })
       .catch((err) => {
-        setError(err.message)
+        toast.error(err.message)
         setCargando(false)
       })
   }
@@ -63,7 +66,6 @@ function AdminProductos() {
     const archivo = e.target.files[0]
     if (!archivo) return
     setSubiendoFoto(true)
-    setError(null)
     try {
       const res = await fetch(
         `/api/subir-imagen?filename=${encodeURIComponent(archivo.name)}`,
@@ -75,8 +77,9 @@ function AdminProductos() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       setImagenUrl(data.url)
+      toast.success('Foto subida')
     } catch (err) {
-      setError('Error al subir la foto: ' + err.message)
+      toast.error('Error al subir la foto: ' + err.message)
     } finally {
       setSubiendoFoto(false)
     }
@@ -84,11 +87,10 @@ function AdminProductos() {
 
   const guardarProducto = async () => {
     if (!nombre.trim() || !precio) {
-      setError('Nombre y precio son obligatorios')
+      toast.error('Nombre y precio son obligatorios')
       return
     }
     setGuardando(true)
-    setError(null)
     try {
       const esEdicion = editandoId != null
       const res = await fetch('/api/admin?action=productos', {
@@ -104,28 +106,31 @@ function AdminProductos() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
+      toast.success(esEdicion ? 'Producto actualizado' : 'Producto agregado')
       limpiarFormulario()
       cargarProductos()
     } catch (err) {
-      setError(err.message)
+      toast.error(err.message)
     } finally {
       setGuardando(false)
     }
   }
 
-  const eliminarProducto = async (id) => {
-    if (!confirm('¿Eliminar este producto?')) return
+  const eliminarProducto = async () => {
+    if (!aBorrar) return
     try {
       const res = await fetch('/api/admin?action=productos', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ id: aBorrar.id }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
+      toast.success('Producto eliminado')
+      setABorrar(null)
       cargarProductos()
     } catch (err) {
-      setError(err.message)
+      toast.error(err.message)
     }
   }
 
@@ -139,7 +144,7 @@ function AdminProductos() {
   }
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-2xl mx-auto">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-xl font-bold">Gestionar productos</h1>
         <button
@@ -150,7 +155,7 @@ function AdminProductos() {
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow p-4 mb-6">
+      <div className="bg-white rounded-xl shadow p-4 mb-6">
         <h2 className="text-sm font-medium mb-3">
           {editandoId ? 'Editar producto' : 'Nuevo producto'}
         </h2>
@@ -160,30 +165,32 @@ function AdminProductos() {
             placeholder="Nombre"
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
-            className="w-full border rounded px-3 py-2 text-sm"
+            className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
           />
           <input
             type="text"
             placeholder="Descripción"
             value={descripcion}
             onChange={(e) => setDescripcion(e.target.value)}
-            className="w-full border rounded px-3 py-2 text-sm"
+            className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
           />
           <input
             type="number"
             placeholder="Precio (ej: 25000)"
             value={precio}
             onChange={(e) => setPrecio(e.target.value)}
-            className="w-full border rounded px-3 py-2 text-sm"
+            className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
           />
 
-          <div className="border rounded p-3">
-            <label className="block text-xs text-gray-500 mb-2">Foto del producto</label>
+          <div className="border rounded-lg p-3">
+            <label className="flex items-center gap-1 text-xs text-gray-500 mb-2">
+              <ImagePlus size={14} /> Foto del producto
+            </label>
             {imagenUrl && (
               <img
                 src={imagenUrl}
                 alt="Vista previa"
-                className="w-24 h-24 object-cover rounded mb-2"
+                className="w-24 h-24 object-cover rounded-lg mb-2"
               />
             )}
             <input
@@ -194,24 +201,25 @@ function AdminProductos() {
               className="text-xs w-full"
             />
             {subiendoFoto && (
-              <p className="text-xs text-gray-500 mt-1">Subiendo foto...</p>
+              <p className="flex items-center gap-1 text-xs text-gray-500 mt-1">
+                <Loader2 size={12} className="animate-spin" /> Subiendo foto...
+              </p>
             )}
           </div>
-
-          {error && <p className="text-red-500 text-sm">{error}</p>}
 
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={guardarProducto}
               disabled={guardando || subiendoFoto}
-              className="bg-gray-900 text-white rounded px-3 py-2 text-sm disabled:opacity-50"
+              className="flex items-center justify-center gap-2 bg-gray-900 text-white rounded-lg px-3 py-2 text-sm font-medium transition active:scale-95 disabled:opacity-50 disabled:active:scale-100"
             >
+              {guardando && <Loader2 size={14} className="animate-spin" />}
               {guardando ? 'Guardando...' : editandoId ? 'Guardar cambios' : 'Agregar producto'}
             </button>
             {editandoId && (
               <button
                 onClick={limpiarFormulario}
-                className="border border-gray-300 rounded px-3 py-2 text-sm"
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm transition active:scale-95"
               >
                 Cancelar
               </button>
@@ -220,16 +228,28 @@ function AdminProductos() {
         </div>
       </div>
 
-      {cargando && <p className="text-gray-500 text-sm">Cargando...</p>}
+      {cargando && (
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-white rounded-xl shadow p-3 flex items-center gap-3 animate-pulse">
+              <div className="w-12 h-12 rounded-lg bg-gray-200" />
+              <div className="flex-1 space-y-2">
+                <div className="h-3 w-32 bg-gray-200 rounded" />
+                <div className="h-3 w-20 bg-gray-200 rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="space-y-3">
         {productos.map((p) => (
           <div
             key={p.id}
-            className="bg-white rounded-lg shadow p-3 flex justify-between items-center"
+            className="bg-white rounded-xl shadow p-3 flex justify-between items-center"
           >
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded bg-gray-100 flex items-center justify-center text-xl overflow-hidden">
+              <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-xl overflow-hidden shrink-0">
                 {p.imagen_url ? (
                   <img
                     src={p.imagen_url}
@@ -251,20 +271,46 @@ function AdminProductos() {
             <div className="flex gap-2">
               <button
                 onClick={() => empezarEdicion(p)}
-                className="text-xs bg-gray-200 rounded px-3 py-1"
+                aria-label="Editar"
+                className="flex items-center justify-center w-9 h-9 rounded-lg bg-gray-100 text-gray-700 transition active:scale-95"
               >
-                Editar
+                <Pencil size={16} />
               </button>
               <button
-                onClick={() => eliminarProducto(p.id)}
-                className="text-xs bg-red-100 text-red-700 rounded px-3 py-1"
+                onClick={() => setABorrar(p)}
+                aria-label="Eliminar"
+                className="flex items-center justify-center w-9 h-9 rounded-lg bg-red-100 text-red-700 transition active:scale-95"
               >
-                Eliminar
+                <Trash2 size={16} />
               </button>
             </div>
           </div>
         ))}
       </div>
+
+      <Modal
+        open={aBorrar != null}
+        onClose={() => setABorrar(null)}
+        title="Eliminar producto"
+      >
+        <p className="text-sm text-gray-600 mb-4">
+          ¿Seguro que quieres eliminar <strong>{aBorrar?.nombre}</strong>? Esta acción no se puede deshacer.
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={eliminarProducto}
+            className="bg-red-600 text-white rounded-lg px-3 py-2 text-sm font-medium transition active:scale-95"
+          >
+            Sí, eliminar
+          </button>
+          <button
+            onClick={() => setABorrar(null)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm transition active:scale-95"
+          >
+            Cancelar
+          </button>
+        </div>
+      </Modal>
     </div>
   )
 }

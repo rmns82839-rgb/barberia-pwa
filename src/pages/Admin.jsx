@@ -1,7 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
+import { Power, UserPlus, ClipboardPlus, Bell, Loader2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { hoyColombia } from '../lib/fechas.js'
+import Modal from '../components/Modal.jsx'
+
+const chipBase =
+  'flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-3 text-xs font-medium transition active:scale-95 disabled:opacity-50 disabled:active:scale-100'
 
 function Admin() {
   const { admin, logoutAdmin } = useAuth()
@@ -9,10 +15,9 @@ function Admin() {
   const [citas, setCitas] = useState([])
   const [barberos, setBarberos] = useState([])
   const [cargando, setCargando] = useState(false)
-  const [error, setError] = useState(null)
 
   const [actualizando, setActualizando] = useState(null)
-  const [walkInAbierto, setWalkInAbierto] = useState(null)
+  const [modalWalkIn, setModalWalkIn] = useState(null)
   const [walkInNombre, setWalkInNombre] = useState('')
   const [walkInTelefono, setWalkInTelefono] = useState('')
   const [guardandoWalkIn, setGuardandoWalkIn] = useState(null)
@@ -21,7 +26,6 @@ function Admin() {
 
   const navigate = useNavigate()
 
-  // Verificar autenticación
   useEffect(() => {
     if (!admin) {
       navigate('/admin-login')
@@ -30,7 +34,6 @@ function Admin() {
 
   const cargarCitas = () => {
     setCargando(true)
-    setError(null)
     fetch(`/api/citas?accion=dia&fecha=${fecha}`)
       .then((res) => res.json())
       .then((data) => {
@@ -39,7 +42,7 @@ function Admin() {
         setCargando(false)
       })
       .catch((err) => {
-        setError(err.message)
+        toast.error(err.message)
         setCargando(false)
       })
   }
@@ -59,7 +62,6 @@ function Admin() {
     if (admin) cargarBarberos()
   }, [admin])
 
-  // Consultar respuesta del cliente al aviso (polling mientras esté pendiente)
   useEffect(() => {
     if (!avisoResultado || !avisoResultado.notificacion_id) return
     if (avisoResultado.respuesta) return
@@ -71,6 +73,9 @@ function Admin() {
           if (data.respuesta) {
             setAvisoResultado((prev) =>
               prev ? { ...prev, respuesta: data.respuesta } : prev
+            )
+            toast[data.respuesta === 'confirmado' ? 'success' : 'warning'](
+              data.respuesta === 'confirmado' ? 'Cliente confirmó, va en camino' : 'El cliente no puede venir'
             )
           }
         })
@@ -96,7 +101,7 @@ function Admin() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
     } catch (err) {
-      setError(err.message)
+      toast.error(err.message)
       cargarBarberos()
     } finally {
       setActualizando(null)
@@ -114,7 +119,6 @@ function Admin() {
 
   const registrarWalkIn = async (barbero_id, conNombre) => {
     setGuardandoWalkIn(barbero_id)
-    setError(null)
     setBarberos((prev) =>
       prev.map((b) => (b.id === barbero_id ? { ...b, estado: 'ocupado' } : b))
     )
@@ -135,13 +139,14 @@ function Admin() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      setWalkInAbierto(null)
+      toast.success('Walk-in registrado')
+      setModalWalkIn(null)
       setWalkInNombre('')
       setWalkInTelefono('')
       cargarBarberos()
       cargarCitas()
     } catch (err) {
-      setError(err.message)
+      toast.error(err.message)
     } finally {
       setGuardandoWalkIn(null)
     }
@@ -149,7 +154,6 @@ function Admin() {
 
   const avisarSiguiente = async (barbero_id) => {
     setAvisando(barbero_id)
-    setError(null)
     setAvisoResultado(null)
     try {
       const res = await fetch('/api/admin?action=avisos', {
@@ -160,6 +164,7 @@ function Admin() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       if (data.mensaje) {
+        toast.info(data.mensaje)
         setAvisoResultado({ barbero_id, mensaje: data.mensaje })
       } else {
         const tel = data.cita.cliente_telefono.replace(/\D/g, '')
@@ -176,7 +181,7 @@ function Admin() {
         })
       }
     } catch (err) {
-      setError(err.message)
+      toast.error(err.message)
     } finally {
       setAvisando(null)
     }
@@ -188,7 +193,7 @@ function Admin() {
   }
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-2xl mx-auto">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-xl font-bold">Panel de administración</h1>
         <div className="flex gap-3">
@@ -205,15 +210,15 @@ function Admin() {
       </div>
 
       <h2 className="text-sm font-medium mb-2">Estado de barberos</h2>
-      <div className="grid grid-cols-2 gap-3 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
         {barberos.map((b) => (
           <div
             key={b.id}
-            className="bg-white rounded-lg shadow p-3 flex flex-col items-center text-center"
+            className="bg-white rounded-xl shadow p-4 flex flex-col items-center text-center"
           >
             <div className="font-medium text-sm mb-2">{b.nombre}</div>
             <span
-              className={`text-xs px-2 py-1 rounded-full mb-2 ${
+              className={`text-xs px-2 py-1 rounded-full mb-3 ${
                 b.estado === 'disponible'
                   ? 'bg-green-100 text-green-700'
                   : 'bg-red-100 text-red-700'
@@ -222,99 +227,68 @@ function Admin() {
               {b.estado === 'disponible' ? 'Disponible' : 'Ocupado'}
             </span>
 
-            <button
-              onClick={() => cambiarEstado(b.id, b.estado)}
-              disabled={actualizando === b.id}
-              className="text-xs w-full bg-gray-900 text-white rounded px-2 py-1 disabled:opacity-50"
-            >
-              {actualizando === b.id
-                ? 'Actualizando...'
-                : b.estado === 'disponible'
-                ? 'Marcar ocupado'
-                : 'Marcar disponible'}
-            </button>
+            <div className="grid grid-cols-2 gap-2 w-full">
+              <button
+                onClick={() => cambiarEstado(b.id, b.estado)}
+                disabled={actualizando === b.id}
+                className={`${chipBase} bg-gray-900 text-white`}
+              >
+                {actualizando === b.id ? <Loader2 size={18} className="animate-spin" /> : <Power size={18} />}
+                <span>{b.estado === 'disponible' ? 'Marcar ocupado' : 'Marcar disponible'}</span>
+              </button>
 
-            <div className="w-full mt-2 space-y-1">
               <button
                 onClick={() => registrarWalkIn(b.id, false)}
                 disabled={guardandoWalkIn === b.id}
-                className="text-xs w-full bg-blue-600 text-white rounded px-2 py-1 disabled:opacity-50"
+                className={`${chipBase} bg-blue-600 text-white`}
               >
-                {guardandoWalkIn === b.id ? 'Registrando...' : 'Walk-in rápido'}
-              </button>
-              <button
-                onClick={() => setWalkInAbierto(walkInAbierto === b.id ? null : b.id)}
-                className="text-xs w-full border border-blue-600 text-blue-600 rounded px-2 py-1"
-              >
-                Walk-in con nombre
+                {guardandoWalkIn === b.id ? <Loader2 size={18} className="animate-spin" /> : <UserPlus size={18} />}
+                <span>Walk-in rápido</span>
               </button>
 
-              {walkInAbierto === b.id && (
-                <div className="mt-2 space-y-1">
-                  <input
-                    type="text"
-                    placeholder="Nombre"
-                    value={walkInNombre}
-                    onChange={(e) => setWalkInNombre(e.target.value)}
-                    className="w-full border rounded px-2 py-1 text-xs"
-                  />
-                  <input
-                    type="tel"
-                    placeholder="Teléfono (opcional)"
-                    value={walkInTelefono}
-                    onChange={(e) => setWalkInTelefono(e.target.value)}
-                    className="w-full border rounded px-2 py-1 text-xs"
-                  />
-                  <button
-                    onClick={() => registrarWalkIn(b.id, true)}
-                    disabled={guardandoWalkIn === b.id || !walkInNombre.trim()}
-                    className="text-xs w-full bg-blue-600 text-white rounded px-2 py-1 disabled:opacity-50"
-                  >
-                    {guardandoWalkIn === b.id ? 'Guardando...' : 'Registrar'}
-                  </button>
-                </div>
-              )}
+              <button
+                onClick={() => setModalWalkIn(b.id)}
+                className={`${chipBase} border border-blue-600 text-blue-600`}
+              >
+                <ClipboardPlus size={18} />
+                <span>Con nombre</span>
+              </button>
+
+              <button
+                onClick={() => avisarSiguiente(b.id)}
+                disabled={avisando === b.id}
+                className={`${chipBase} bg-amber-500 text-white`}
+              >
+                {avisando === b.id ? <Loader2 size={18} className="animate-spin" /> : <Bell size={18} />}
+                <span>Avisar siguiente</span>
+              </button>
             </div>
 
-            <button
-              onClick={() => avisarSiguiente(b.id)}
-              disabled={avisando === b.id}
-              className="text-xs w-full mt-2 bg-amber-500 text-white rounded px-2 py-1 disabled:opacity-50"
-            >
-              {avisando === b.id ? 'Buscando...' : '🔔 Avisar al siguiente'}
-            </button>
-
-            {avisoResultado && avisoResultado.barbero_id === b.id && (
-              <div className="w-full mt-2 text-xs">
-                {avisoResultado.mensaje ? (
-                  <p className="text-gray-500">{avisoResultado.mensaje}</p>
-                ) : (
-                  <div className="bg-amber-50 rounded p-2">
-                    <p className="mb-1">
-                      Siguiente: <strong>{avisoResultado.cita.cliente_nombre}</strong> ({avisoResultado.cita.hora})
-                    </p>
-                    <a
-                      href={avisoResultado.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block bg-green-600 text-white text-center rounded px-2 py-1 mb-2"
-                    >
-                      Enviar WhatsApp
-                    </a>
-                    {avisoResultado.respuesta === 'confirmado' && (
-                      <p className="bg-green-100 text-green-700 rounded px-2 py-1 text-center font-medium">
-                        ✅ Confirmó, va en camino
-                      </p>
-                    )}
-                    {avisoResultado.respuesta === 'cancelado' && (
-                      <p className="bg-red-100 text-red-700 rounded px-2 py-1 text-center font-medium">
-                        ❌ No puede venir
-                      </p>
-                    )}
-                    {!avisoResultado.respuesta && (
-                      <p className="text-gray-400 text-center">Esperando respuesta...</p>
-                    )}
-                  </div>
+            {avisoResultado && avisoResultado.barbero_id === b.id && !avisoResultado.mensaje && (
+              <div className="w-full mt-3 text-xs bg-amber-50 rounded-lg p-3">
+                <p className="mb-2">
+                  Siguiente: <strong>{avisoResultado.cita.cliente_nombre}</strong> ({avisoResultado.cita.hora})
+                </p>
+                <a
+                  href={avisoResultado.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block bg-green-600 text-white text-center rounded-lg px-2 py-2 mb-2 font-medium"
+                >
+                  Enviar WhatsApp
+                </a>
+                {avisoResultado.respuesta === 'confirmado' && (
+                  <p className="bg-green-100 text-green-700 rounded-lg px-2 py-1 text-center font-medium">
+                    ✅ Confirmó, va en camino
+                  </p>
+                )}
+                {avisoResultado.respuesta === 'cancelado' && (
+                  <p className="bg-red-100 text-red-700 rounded-lg px-2 py-1 text-center font-medium">
+                    ❌ No puede venir
+                  </p>
+                )}
+                {!avisoResultado.respuesta && (
+                  <p className="text-gray-400 text-center">Esperando respuesta...</p>
                 )}
               </div>
             )}
@@ -322,16 +296,54 @@ function Admin() {
         ))}
       </div>
 
+      <Modal
+        open={modalWalkIn != null}
+        onClose={() => setModalWalkIn(null)}
+        title="Registrar walk-in con nombre"
+      >
+        <div className="space-y-2">
+          <input
+            type="text"
+            placeholder="Nombre"
+            value={walkInNombre}
+            onChange={(e) => setWalkInNombre(e.target.value)}
+            className="w-full border rounded-lg px-3 py-2 text-sm"
+          />
+          <input
+            type="tel"
+            placeholder="Teléfono (opcional)"
+            value={walkInTelefono}
+            onChange={(e) => setWalkInTelefono(e.target.value)}
+            className="w-full border rounded-lg px-3 py-2 text-sm"
+          />
+          <button
+            onClick={() => registrarWalkIn(modalWalkIn, true)}
+            disabled={guardandoWalkIn === modalWalkIn || !walkInNombre.trim()}
+            className="w-full bg-blue-600 text-white rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
+          >
+            {guardandoWalkIn === modalWalkIn ? 'Guardando...' : 'Registrar'}
+          </button>
+        </div>
+      </Modal>
+
       <label className="block text-sm font-medium mb-2">Ver citas del día</label>
       <input
         type="date"
         value={fecha}
         onChange={(e) => setFecha(e.target.value)}
-        className="w-full border rounded px-3 py-2 mb-5"
+        className="w-full border rounded-lg px-3 py-2 mb-5"
       />
 
-      {cargando && <p className="text-gray-500 text-sm">Cargando citas...</p>}
-      {error && <p className="text-red-500 text-sm">Error: {error}</p>}
+      {cargando && (
+        <div className="space-y-3 mb-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-white rounded-xl shadow p-4 animate-pulse">
+              <div className="h-4 w-16 bg-gray-200 rounded mb-2" />
+              <div className="h-3 w-32 bg-gray-200 rounded" />
+            </div>
+          ))}
+        </div>
+      )}
 
       {!cargando && citas.length === 0 && (
         <p className="text-gray-500 text-sm">No hay citas para este día.</p>
@@ -341,7 +353,7 @@ function Admin() {
         {citas.map((cita) => (
           <div
             key={cita.id}
-            className="bg-white rounded-lg shadow p-4 flex justify-between items-center"
+            className="bg-white rounded-xl shadow p-4 flex justify-between items-center"
           >
             <div>
               <div className="font-semibold text-lg">{cita.hora}</div>

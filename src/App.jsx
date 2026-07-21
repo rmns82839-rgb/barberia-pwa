@@ -1,4 +1,6 @@
-import { Routes, Route } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Routes, Route, useLocation } from 'react-router-dom'
+import { AnimatePresence, motion } from 'framer-motion'
 import Home from './pages/Home.jsx'
 import Login from './pages/Login.jsx'
 import Citas from './pages/Citas.jsx'
@@ -8,22 +10,51 @@ import Navbar from './components/Navbar.jsx'
 import AdminLogin from './pages/AdminLogin.jsx'
 import AdminProductos from './pages/AdminProductos.jsx'
 import AdminClientes from './pages/AdminClientes.jsx'
+import { obtenerTema, aplicarTema } from './lib/tema.js'
+
+const variantesPagina = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -8 },
+}
 
 function App() {
+  const location = useLocation()
+
+  useEffect(() => {
+    aplicarTema(obtenerTema())
+  }, [])
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 dark:text-gray-100 transition-colors">
       <Navbar />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/citas" element={<Citas />} />
-        <Route path="/catalogo" element={<Catalogo />} />
-        <Route path="/admin" element={<Admin />} />
-        <Route path="/admin-login" element={<AdminLogin />} />
-        <Route path="/admin-productos" element={<AdminProductos />} />
-        <Route path="/admin-clientes" element={<AdminClientes />} />
-      </Routes>
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
+          <Route path="/" element={<PaginaAnimada><Home /></PaginaAnimada>} />
+          <Route path="/login" element={<PaginaAnimada><Login /></PaginaAnimada>} />
+          <Route path="/citas" element={<PaginaAnimada><Citas /></PaginaAnimada>} />
+          <Route path="/catalogo" element={<PaginaAnimada><Catalogo /></PaginaAnimada>} />
+          <Route path="/admin" element={<PaginaAnimada><Admin /></PaginaAnimada>} />
+          <Route path="/admin-login" element={<PaginaAnimada><AdminLogin /></PaginaAnimada>} />
+          <Route path="/admin-productos" element={<PaginaAnimada><AdminProductos /></PaginaAnimada>} />
+          <Route path="/admin-clientes" element={<PaginaAnimada><AdminClientes /></PaginaAnimada>} />
+        </Routes>
+      </AnimatePresence>
     </div>
+  )
+}
+
+function PaginaAnimada({ children }) {
+  return (
+    <motion.div
+      variants={variantesPagina}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      transition={{ duration: 0.18, ease: 'easeOut' }}
+    >
+      {children}
+    </motion.div>
   )
 }
 

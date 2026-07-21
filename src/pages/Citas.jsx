@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
+import { Scissors } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { hoyColombia } from '../lib/fechas.js'
 import { pedirPermisoNotificaciones, mostrarNotificacion } from '../lib/notificaciones.js'
@@ -12,7 +14,7 @@ function Citas() {
   const [horarios, setHorarios] = useState([])
   const [horaSel, setHoraSel] = useState(null)
   const [cargando, setCargando] = useState(false)
-  const [mensaje, setMensaje] = useState('')
+  const [sinDisponibilidad, setSinDisponibilidad] = useState('')
   const [confirmada, setConfirmada] = useState(null)
 
   const [aviso, setAviso] = useState(null)
@@ -31,7 +33,7 @@ function Citas() {
     fetch('/api/barberos')
       .then((res) => res.json())
       .then((data) => setBarberos(data))
-      .catch(() => setMensaje('No se pudieron cargar los barberos'))
+      .catch(() => toast.error('No se pudieron cargar los barberos'))
   }, [])
 
   useEffect(() => {
@@ -41,15 +43,16 @@ function Citas() {
     }
     setCargando(true)
     setHoraSel(null)
+    setSinDisponibilidad('')
     fetch(`/api/citas?accion=disponibilidad&barbero_id=${barberoSel}&fecha=${fecha}`)
       .then((res) => res.json())
       .then((data) => {
         setHorarios(data.disponibles || [])
-        setMensaje(data.mensaje || '')
+        setSinDisponibilidad(data.mensaje || '')
         setCargando(false)
       })
       .catch(() => {
-        setMensaje('Error al cargar horarios')
+        toast.error('Error al cargar horarios')
         setCargando(false)
       })
   }, [barberoSel, fecha])
@@ -87,20 +90,20 @@ function Citas() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notificacion_id: aviso.notificacion_id, respuesta }),
       })
+      toast.success('Respuesta enviada')
       setAvisoRespondido(true)
       setTimeout(() => {
         setAviso(null)
         setAvisoRespondido(false)
       }, 3000)
     } catch {
-      setMensaje('No se pudo enviar la respuesta')
+      toast.error('No se pudo enviar la respuesta')
     }
   }
 
   const confirmarCita = async () => {
     if (!barberoSel || !fecha || !horaSel) return
     setCargando(true)
-    setMensaje('')
     try {
       const res = await fetch('/api/citas?accion=crear', {
         method: 'POST',
@@ -115,8 +118,9 @@ function Citas() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Error al agendar')
       setConfirmada(data.cita)
+      toast.success('¡Cita agendada!')
     } catch (err) {
-      setMensaje(err.message)
+      toast.error(err.message)
     } finally {
       setCargando(false)
     }
@@ -138,13 +142,13 @@ function Citas() {
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => responderAviso('confirmado')}
-                className="bg-white text-amber-600 rounded px-3 py-2 text-sm font-medium"
+                className="bg-white text-amber-600 rounded-lg px-3 py-2 text-sm font-medium transition active:scale-95"
               >
                 Sí, voy en camino
               </button>
               <button
                 onClick={() => responderAviso('cancelado')}
-                className="bg-amber-700 text-white rounded px-3 py-2 text-sm font-medium"
+                className="bg-amber-700 text-white rounded-lg px-3 py-2 text-sm font-medium transition active:scale-95"
               >
                 No puedo
               </button>
@@ -175,7 +179,7 @@ function Citas() {
             setFecha('')
             setHoraSel(null)
           }}
-          className="mt-6 bg-gray-900 text-white rounded px-4 py-2"
+          className="mt-6 bg-gray-900 text-white rounded-lg px-4 py-2 transition active:scale-95"
         >
           Agendar otra cita
         </button>
@@ -184,7 +188,7 @@ function Citas() {
   }
 
   return (
-    <div className="p-6 max-w-md mx-auto">
+    <div className="p-4 sm:p-6 max-w-md mx-auto">
       {bannerAviso}
 
       <h1 className="text-xl font-bold mb-4">Aparta tu cita</h1>
@@ -193,12 +197,12 @@ function Citas() {
         onClick={async () => {
           const permiso = await pedirPermisoNotificaciones()
           if (permiso === 'granted') {
-            mostrarNotificacion('¡Notificaciones activadas!', 'Te avisaremos cuando tu turno esté cerca.')
+            toast.success('¡Notificaciones activadas!')
           } else {
-            alert('Permiso de notificaciones: ' + permiso)
+            toast.info('Permiso de notificaciones: ' + permiso)
           }
         }}
-        className="w-full mb-4 bg-amber-500 text-white rounded px-3 py-2 text-sm"
+        className="w-full mb-4 bg-amber-500 text-white rounded-lg px-3 py-2 text-sm font-medium transition active:scale-95"
       >
         🔔 Activar notificaciones
       </button>
@@ -209,13 +213,13 @@ function Citas() {
           <button
             key={b.id}
             onClick={() => setBarberoSel(b.id)}
-            className={`rounded-lg border p-3 text-center ${
+            className={`rounded-xl border p-3 text-center transition active:scale-95 ${
               barberoSel === b.id
                 ? 'border-gray-900 bg-gray-900 text-white'
-                : 'border-gray-300 bg-white'
+                : 'border-gray-300 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100'
             }`}
           >
-            <div className="text-2xl mb-1">✂️</div>
+            <Scissors size={22} className="mx-auto mb-1" />
             <div className="text-sm font-medium">{b.nombre}</div>
           </button>
         ))}
@@ -227,43 +231,47 @@ function Citas() {
         min={hoy}
         value={fecha}
         onChange={(e) => setFecha(e.target.value)}
-        className="w-full border rounded px-3 py-2 mb-5"
+        className="w-full border rounded-lg px-3 py-2 mb-5 bg-white text-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-900"
       />
 
       {barberoSel && fecha && (
         <>
           <label className="block text-sm font-medium mb-2">3. Elige la hora</label>
-          {cargando && <p className="text-gray-500 text-sm">Cargando horarios...</p>}
-          {!cargando && horarios.length === 0 && (
-            <p className="text-gray-500 text-sm">{mensaje || 'No hay horarios disponibles'}</p>
+          {cargando && (
+            <div className="grid grid-cols-3 gap-2 mb-5">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="h-9 rounded-lg bg-gray-200 animate-pulse" />
+              ))}
+            </div>
           )}
-          <div className="grid grid-cols-3 gap-2 mb-5">
-            {horarios.map((h) => (
-              <button
-                key={h}
-                onClick={() => setHoraSel(h)}
-                className={`rounded border py-2 text-sm ${
-                  horaSel === h
-                    ? 'border-gray-900 bg-gray-900 text-white'
-                    : 'border-gray-300 bg-white'
-                }`}
-              >
-                {h}
-              </button>
-            ))}
-          </div>
+          {!cargando && horarios.length === 0 && (
+            <p className="text-gray-500 text-sm mb-5">{sinDisponibilidad || 'No hay horarios disponibles'}</p>
+          )}
+          {!cargando && horarios.length > 0 && (
+            <div className="grid grid-cols-3 gap-2 mb-5">
+              {horarios.map((h) => (
+                <button
+                  key={h}
+                  onClick={() => setHoraSel(h)}
+                  className={`rounded-lg border py-2 text-sm transition active:scale-95 ${
+                    horaSel === h
+                      ? 'border-gray-900 bg-gray-900 text-white'
+                      : 'border-gray-300 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100'
+                  }`}
+                >
+                  {h}
+                </button>
+              ))}
+            </div>
+          )}
         </>
-      )}
-
-      {mensaje && !cargando && horarios.length > 0 && (
-        <p className="text-red-500 text-sm mb-3">{mensaje}</p>
       )}
 
       {horaSel && (
         <button
           onClick={confirmarCita}
           disabled={cargando}
-          className="w-full bg-gray-900 text-white rounded px-3 py-3 font-medium disabled:opacity-50"
+          className="w-full bg-gray-900 text-white rounded-lg px-3 py-3 font-medium transition active:scale-95 disabled:opacity-50 disabled:active:scale-100"
         >
           {cargando ? 'Agendando...' : `Confirmar cita a las ${horaSel}`}
         </button>
