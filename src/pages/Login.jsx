@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 function Login() {
   const [nombre, setNombre] = useState('')
@@ -7,6 +8,7 @@ function Login() {
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState(null)
   const navigate = useNavigate()
+  const { loginCliente } = useAuth()
 
   const handleSubmit = async () => {
     setError(null)
@@ -18,7 +20,7 @@ function Login() {
 
     setCargando(true)
     try {
-      const res = await fetch('/api/clientes', {
+      const res = await fetch('/api/auth?action=cliente-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nombre: nombre.trim(), telefono: telefono.trim() }),
@@ -27,10 +29,7 @@ function Login() {
 
       if (!res.ok) throw new Error(data.error || 'Error al iniciar sesión')
 
-      // Guardamos la sesión del cliente localmente
-      localStorage.setItem('cliente', JSON.stringify(data.cliente))
-
-      // Redirigimos a la sección de citas
+      loginCliente(data.cliente)
       navigate('/citas')
     } catch (err) {
       setError(err.message)
@@ -41,7 +40,11 @@ function Login() {
 
   return (
     <div className="p-6 max-w-sm mx-auto">
-      <h1 className="text-xl font-bold mb-4">Iniciar sesión</h1>
+      <h1 className="text-xl font-bold mb-2">Bienvenido</h1>
+      <p className="text-sm text-gray-500 mb-4">
+        Ingresa tus datos para agendar tu cita.
+      </p>
+
       <div className="space-y-3">
         <input
           type="text"
@@ -65,8 +68,15 @@ function Login() {
           disabled={cargando}
           className="w-full bg-gray-900 text-white rounded px-3 py-2 disabled:opacity-50"
         >
-          {cargando ? 'Entrando...' : 'Continuar'}
+          {cargando ? 'Entrando...' : 'Ingresar'}
         </button>
+      </div>
+
+      <div className="mt-6 border-t pt-4 text-center">
+        <p className="text-sm text-gray-600">
+          ¿Primera vez? No te preocupes: solo escribe tu nombre y WhatsApp arriba,
+          y quedarás registrado automáticamente al ingresar.
+        </p>
       </div>
     </div>
   )

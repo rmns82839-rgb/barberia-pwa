@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 function AdminProductos() {
-  const [admin, setAdmin] = useState(null)
+  const { admin } = useAuth()
   const [productos, setProductos] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
 
-  // Formulario (sirve para crear o editar)
   const [editandoId, setEditandoId] = useState(null)
   const [nombre, setNombre] = useState('')
   const [descripcion, setDescripcion] = useState('')
@@ -19,16 +19,14 @@ function AdminProductos() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    const guardado = localStorage.getItem('admin')
-    if (!guardado) {
+    if (!admin) {
       navigate('/admin-login')
       return
     }
-    setAdmin(JSON.parse(guardado))
-  }, [navigate])
+  }, [admin, navigate])
 
   const cargarProductos = () => {
-    fetch('/api/productos')
+    fetch('/api/admin?action=productos')
       .then((res) => res.json())
       .then((data) => {
         setProductos(data.productos || [])
@@ -93,7 +91,7 @@ function AdminProductos() {
     setError(null)
     try {
       const esEdicion = editandoId != null
-      const res = await fetch('/api/gestionar-producto', {
+      const res = await fetch('/api/admin?action=productos', {
         method: esEdicion ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -118,7 +116,7 @@ function AdminProductos() {
   const eliminarProducto = async (id) => {
     if (!confirm('¿Eliminar este producto?')) return
     try {
-      const res = await fetch('/api/gestionar-producto', {
+      const res = await fetch('/api/admin?action=productos', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),
@@ -152,7 +150,6 @@ function AdminProductos() {
         </button>
       </div>
 
-      {/* Formulario crear/editar */}
       <div className="bg-white rounded-lg shadow p-4 mb-6">
         <h2 className="text-sm font-medium mb-3">
           {editandoId ? 'Editar producto' : 'Nuevo producto'}
@@ -180,7 +177,6 @@ function AdminProductos() {
             className="w-full border rounded px-3 py-2 text-sm"
           />
 
-          {/* Subir foto */}
           <div className="border rounded p-3">
             <label className="block text-xs text-gray-500 mb-2">Foto del producto</label>
             {imagenUrl && (
@@ -224,7 +220,6 @@ function AdminProductos() {
         </div>
       </div>
 
-      {/* Lista de productos */}
       {cargando && <p className="text-gray-500 text-sm">Cargando...</p>}
 
       <div className="space-y-3">

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 function AdminLogin() {
   const [usuario, setUsuario] = useState('')
@@ -7,6 +8,7 @@ function AdminLogin() {
   const [error, setError] = useState(null)
   const [cargando, setCargando] = useState(false)
   const navigate = useNavigate()
+  const { loginAdmin } = useAuth()
 
   const handleSubmit = async () => {
     setError(null)
@@ -16,7 +18,7 @@ function AdminLogin() {
     }
     setCargando(true)
     try {
-      const res = await fetch('/api/login-admin', {
+      const res = await fetch('/api/auth?action=admin-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ usuario: usuario.trim(), password }),
@@ -24,7 +26,7 @@ function AdminLogin() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Error al iniciar sesión')
 
-      localStorage.setItem('admin', JSON.stringify(data.admin))
+      loginAdmin(data)
       navigate('/admin')
     } catch (err) {
       setError(err.message)

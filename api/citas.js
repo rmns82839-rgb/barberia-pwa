@@ -34,6 +34,37 @@ export default async function handler(req, res) {
         if (excepcion[0].cerrado) {
           return res.status(200).json({ disponibles: [], mensaje: "Cerrado ese día" })
         }
+        if (req.method === "GET" && accion === "mi-aviso") {
+  const cliente_id = req.query.cliente_id
+  const fecha = req.query.fecha
+  if (!cliente_id || !fecha) return res.status(400).json({ error: "Faltan cliente_id o fecha" })
+
+  const avisos = await sql`
+    SELECT n.id AS notificacion_id, to_char(c.hora, 'HH24:MI') AS hora, b.nombre AS barbero_nombre
+    FROM notificaciones n
+    JOIN citas c ON c.id = n.cita_id
+    JOIN barberos b ON b.id = c.barbero_id
+    WHERE c.cliente_id = ${cliente_id} AND c.fecha = ${fecha}
+      AND n.tipo = 'aviso_proximidad' AND n.respuesta IS NULL
+    ORDER BY n.enviado_en DESC LIMIT 1
+  `
+  return res.status(200).json({ aviso: avisos[0] || null })
+}
+
+if (req.method === "POST" && accion === "responder-aviso") {
+  const body = await leerBody(req)
+  const data = JSON.parse(body)
+  const { notificacion_id, respuesta } = data
+  if (!notificacion_id || !respuesta) return res.status(400).json({ error: "Faltan datos" })
+  if (respuesta !== 'confirmado' && respuesta !== 'cancelado') return res.status(400).json({ error: "Respuesta no válida" })
+
+  const result = await sql`
+    UPDATE notificaciones SET respuesta = ${respuesta}, respondido_en = now()
+    WHERE id = ${notificacion_id} RETURNING id
+  `
+  if (result.length === 0) return res.status(404).json({ error: "Notificación no encontrada" })
+  return res.status(200).json({ ok: true })
+}
         abre = excepcion[0].abre
         cierra = excepcion[0].cierra
       } else {

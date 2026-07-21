@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 import { hoyColombia } from '../lib/fechas.js'
 
 function Admin() {
-  const [admin, setAdmin] = useState(null)
+  const { admin, logoutAdmin } = useAuth()
   const [fecha, setFecha] = useState(hoyColombia())
   const [citas, setCitas] = useState([])
   const [barberos, setBarberos] = useState([])
@@ -20,14 +21,12 @@ function Admin() {
 
   const navigate = useNavigate()
 
+  // Verificar autenticación
   useEffect(() => {
-    const guardado = localStorage.getItem('admin')
-    if (!guardado) {
+    if (!admin) {
       navigate('/admin-login')
-      return
     }
-    setAdmin(JSON.parse(guardado))
-  }, [navigate])
+  }, [admin, navigate])
 
   const cargarCitas = () => {
     setCargando(true)
@@ -66,7 +65,7 @@ function Admin() {
     if (avisoResultado.respuesta) return
 
     const revisar = () => {
-      fetch(`/api/avisos?accion=estado&notificacion_id=${avisoResultado.notificacion_id}`)
+      fetch(`/api/admin?action=estado-aviso&notificacion_id=${avisoResultado.notificacion_id}`)
         .then((res) => res.json())
         .then((data) => {
           if (data.respuesta) {
@@ -153,7 +152,7 @@ function Admin() {
     setError(null)
     setAvisoResultado(null)
     try {
-      const res = await fetch('/api/avisos?accion=avisar', {
+      const res = await fetch('/api/admin?action=avisos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ barbero_id, fecha: hoyColombia() }),
@@ -184,7 +183,7 @@ function Admin() {
   }
 
   const cerrarSesion = () => {
-    localStorage.removeItem('admin')
+    logoutAdmin()
     navigate('/admin-login')
   }
 
@@ -195,6 +194,9 @@ function Admin() {
         <div className="flex gap-3">
           <button onClick={() => navigate('/admin-productos')} className="text-sm text-blue-600 underline">
             Productos
+          </button>
+          <button onClick={() => navigate('/admin-clientes')} className="text-sm text-blue-600 underline">
+            Clientes
           </button>
           <button onClick={cerrarSesion} className="text-sm text-gray-500 underline">
             Cerrar sesión

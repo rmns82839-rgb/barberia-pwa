@@ -7,6 +7,7 @@ import Admin from './pages/Admin.jsx'
 import Navbar from './components/Navbar.jsx'
 import AdminLogin from './pages/AdminLogin.jsx'
 import AdminProductos from './pages/AdminProductos.jsx'
+import AdminClientes from './pages/AdminClientes.jsx'
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
         <Route path="/admin" element={<Admin />} />
         <Route path="/admin-login" element={<AdminLogin />} />
         <Route path="/admin-productos" element={<AdminProductos />} />
+        <Route path="/admin-clientes" element={<AdminClientes />} />
       </Routes>
     </div>
   )
