@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import CargandoTijera from '../components/CargandoTijera.jsx'
 
 function BarberoLogin() {
   const [usuario, setUsuario] = useState('')
@@ -45,22 +45,21 @@ function BarberoLogin() {
           placeholder="Usuario"
           value={usuario}
           onChange={(e) => setUsuario(e.target.value)}
-          className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="w-full border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-900"
         />
         <input
           type="password"
           placeholder="Contraseña"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="w-full border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-900"
         />
         <button
           type="submit"
           disabled={cargando}
           className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white rounded-lg px-3 py-2.5 font-medium transition active:scale-95 disabled:opacity-50"
         >
-          {cargando && <Loader2 size={18} className="animate-spin" />}
-          {cargando ? 'Entrando...' : 'Ingresar'}
+          {cargando ? <CargandoTijera texto="Entrando..." size={16} className="text-white" /> : 'Ingresar'}
         </button>
       </form>
     </div>

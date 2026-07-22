@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import CargandoTijera from '../components/CargandoTijera.jsx'
 
 function Login() {
   const [nombre, setNombre] = useState('')
@@ -43,7 +43,7 @@ function Login() {
   return (
     <div className="p-6 max-w-sm mx-auto">
       <h1 className="text-xl font-bold mb-2">Bienvenido</h1>
-      <p className="text-sm text-gray-500 mb-4">
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
         Ingresa tus datos para agendar tu cita.
       </p>
 
@@ -53,14 +53,14 @@ function Login() {
           placeholder="Tu nombre"
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
-          className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="w-full border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-900"
         />
         <input
           type="tel"
           placeholder="Número de WhatsApp"
           value={telefono}
           onChange={(e) => setTelefono(e.target.value)}
-          className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="w-full border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-900"
         />
 
         <button
@@ -68,13 +68,12 @@ function Login() {
           disabled={cargando}
           className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white rounded-lg px-3 py-2.5 font-medium transition active:scale-95 disabled:opacity-50 disabled:active:scale-100"
         >
-          {cargando && <Loader2 size={18} className="animate-spin" />}
-          {cargando ? 'Entrando...' : 'Ingresar'}
+          {cargando ? <CargandoTijera texto="Entrando..." size={16} className="text-white" /> : 'Ingresar'}
         </button>
       </form>
 
-      <div className="mt-6 border-t pt-4 text-center">
-        <p className="text-sm text-gray-600">
+      <div className="mt-6 border-t dark:border-gray-700 pt-4 text-center">
+        <p className="text-sm text-gray-600 dark:text-gray-400">
           ¿Primera vez? No te preocupes: solo escribe tu nombre y WhatsApp arriba,
           y quedarás registrado automáticamente al ingresar.
         </p>

@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Pencil, Trash2, Loader2, ImagePlus } from 'lucide-react'
+import { Pencil, Trash2, ImagePlus } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import Modal from '../components/Modal.jsx'
+import CargandoTijera from '../components/CargandoTijera.jsx'
 
 function AdminProductos() {
   const { admin } = useAuth()
@@ -149,13 +150,13 @@ function AdminProductos() {
         <h1 className="text-xl font-bold">Gestionar productos</h1>
         <button
           onClick={() => navigate('/admin')}
-          className="text-sm text-gray-500 underline"
+          className="text-sm text-gray-500 dark:text-gray-400 underline"
         >
           Volver al panel
         </button>
       </div>
 
-      <div className="bg-white rounded-xl shadow p-4 mb-6">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-4 mb-6">
         <h2 className="text-sm font-medium mb-3">
           {editandoId ? 'Editar producto' : 'Nuevo producto'}
         </h2>
@@ -165,25 +166,25 @@ function AdminProductos() {
             placeholder="Nombre"
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
-            className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+            className="w-full border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
           />
           <input
             type="text"
             placeholder="Descripción"
             value={descripcion}
             onChange={(e) => setDescripcion(e.target.value)}
-            className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+            className="w-full border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
           />
           <input
             type="number"
             placeholder="Precio (ej: 25000)"
             value={precio}
             onChange={(e) => setPrecio(e.target.value)}
-            className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+            className="w-full border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
           />
 
-          <div className="border rounded-lg p-3">
-            <label className="flex items-center gap-1 text-xs text-gray-500 mb-2">
+          <div className="border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg p-3">
+            <label className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mb-2">
               <ImagePlus size={14} /> Foto del producto
             </label>
             {imagenUrl && (
@@ -201,9 +202,9 @@ function AdminProductos() {
               className="text-xs w-full"
             />
             {subiendoFoto && (
-              <p className="flex items-center gap-1 text-xs text-gray-500 mt-1">
-                <Loader2 size={12} className="animate-spin" /> Subiendo foto...
-              </p>
+              <div className="mt-1">
+                <CargandoTijera texto="Subiendo foto..." size={12} />
+              </div>
             )}
           </div>
 
@@ -213,13 +214,18 @@ function AdminProductos() {
               disabled={guardando || subiendoFoto}
               className="flex items-center justify-center gap-2 bg-gray-900 text-white rounded-lg px-3 py-2 text-sm font-medium transition active:scale-95 disabled:opacity-50 disabled:active:scale-100"
             >
-              {guardando && <Loader2 size={14} className="animate-spin" />}
-              {guardando ? 'Guardando...' : editandoId ? 'Guardar cambios' : 'Agregar producto'}
+              {guardando ? (
+                <CargandoTijera texto="Guardando..." size={14} className="text-white" />
+              ) : editandoId ? (
+                'Guardar cambios'
+              ) : (
+                'Agregar producto'
+              )}
             </button>
             {editandoId && (
               <button
                 onClick={limpiarFormulario}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm transition active:scale-95"
+                className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm transition active:scale-95"
               >
                 Cancelar
               </button>
@@ -231,11 +237,11 @@ function AdminProductos() {
       {cargando && (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white rounded-xl shadow p-3 flex items-center gap-3 animate-pulse">
-              <div className="w-12 h-12 rounded-lg bg-gray-200" />
+            <div key={i} className="bg-white dark:bg-gray-800 rounded-xl shadow p-3 flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg skeleton-shimmer" />
               <div className="flex-1 space-y-2">
-                <div className="h-3 w-32 bg-gray-200 rounded" />
-                <div className="h-3 w-20 bg-gray-200 rounded" />
+                <div className="h-3 w-32 rounded skeleton-shimmer" />
+                <div className="h-3 w-20 rounded skeleton-shimmer" />
               </div>
             </div>
           ))}
@@ -246,10 +252,10 @@ function AdminProductos() {
         {productos.map((p) => (
           <div
             key={p.id}
-            className="bg-white rounded-xl shadow p-3 flex justify-between items-center"
+            className="bg-white dark:bg-gray-800 rounded-xl shadow p-3 flex justify-between items-center"
           >
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-xl overflow-hidden shrink-0">
+              <div className="w-12 h-12 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-xl overflow-hidden shrink-0">
                 {p.imagen_url ? (
                   <img
                     src={p.imagen_url}
@@ -263,16 +269,16 @@ function AdminProductos() {
               <div>
                 <div className="font-medium text-sm">{p.nombre}</div>
                 {p.descripcion && (
-                  <div className="text-xs text-gray-400">{p.descripcion}</div>
+                  <div className="text-xs text-gray-400 dark:text-gray-500">{p.descripcion}</div>
                 )}
-                <div className="text-xs text-gray-500">{formatoPrecio(p.precio)}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">{formatoPrecio(p.precio)}</div>
               </div>
             </div>
             <div className="flex gap-2">
               <button
                 onClick={() => empezarEdicion(p)}
                 aria-label="Editar"
-                className="flex items-center justify-center w-9 h-9 rounded-lg bg-gray-100 text-gray-700 transition active:scale-95"
+                className="flex items-center justify-center w-9 h-9 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 transition active:scale-95"
               >
                 <Pencil size={16} />
               </button>
@@ -293,7 +299,7 @@ function AdminProductos() {
         onClose={() => setABorrar(null)}
         title="Eliminar producto"
       >
-        <p className="text-sm text-gray-600 mb-4">
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
           ¿Seguro que quieres eliminar <strong>{aBorrar?.nombre}</strong>? Esta acción no se puede deshacer.
         </p>
         <div className="grid grid-cols-2 gap-2">
@@ -305,7 +311,7 @@ function AdminProductos() {
           </button>
           <button
             onClick={() => setABorrar(null)}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm transition active:scale-95"
+            className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm transition active:scale-95"
           >
             Cancelar
           </button>
