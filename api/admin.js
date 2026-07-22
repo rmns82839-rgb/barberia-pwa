@@ -118,6 +118,89 @@ export default async function handler(req, res) {
       })
     }
 
+    // =========================================
+    // 7. HORARIO SEMANAL
+    // =========================================
+    if (action === 'horario-semanal' && req.method === 'GET') {
+      const horario = await sql`
+        SELECT id, dia_semana, abre, cierra, activo
+        FROM horario_semanal
+        ORDER BY dia_semana
+      `
+      return responseSuccess(res, { horario })
+    }
+
+    if (action === 'horario-semanal' && req.method === 'PUT') {
+      const body = await leerBody(req)
+      const data = parseJSON(body)
+      if (!data) return responseError(res, 'JSON inválido')
+
+      const { dia_semana, abre, cierra, activo } = data
+      if (dia_semana == null) return responseError(res, 'Falta dia_semana')
+
+      const actualizado = await sql`
+        UPDATE horario_semanal
+        SET abre = ${activo ? abre : null},
+            cierra = ${activo ? cierra : null},
+            activo = ${!!activo}
+        WHERE dia_semana = ${dia_semana}
+        RETURNING id, dia_semana, abre, cierra, activo
+      `
+      if (actualizado.length > 0) {
+        return responseSuccess(res, { dia: actualizado[0] })
+      }
+      const creado = await sql`
+        INSERT INTO horario_semanal (dia_semana, abre, cierra, activo)
+        VALUES (${dia_semana}, ${activo ? abre : null}, ${activo ? cierra : null}, ${!!activo})
+        RETURNING id, dia_semana, abre, cierra, activo
+      `
+      return responseSuccess(res, { dia: creado[0] }, 201)
+    }
+
+    // =========================================
+    // 8. EXCEPCIONES DE HORARIO (cierres/aperturas especiales)
+    // =========================================
+    if (action === 'horario-excepciones' && req.method === 'GET') {
+      const excepciones = await sql`
+        SELECT id, fecha, cerrado, abre, cierra
+        FROM horario_excepciones
+        WHERE fecha >= CURRENT_DATE
+        ORDER BY fecha
+      `
+      return responseSuccess(res, { excepciones })
+    }
+
+    if (action === 'horario-excepciones' && req.method === 'POST') {
+      const body = await leerBody(req)
+      const data = parseJSON(body)
+      if (!data) return responseError(res, 'JSON inválido')
+
+      const { fecha, cerrado, abre, cierra } = data
+      if (!fecha) return responseError(res, 'Falta fecha')
+
+      const nueva = await sql`
+        INSERT INTO horario_excepciones (fecha, cerrado, abre, cierra)
+        VALUES (${fecha}, ${!!cerrado}, ${cerrado ? null : abre || null}, ${cerrado ? null : cierra || null})
+        ON CONFLICT (fecha)
+        DO UPDATE SET cerrado = ${!!cerrado}, abre = ${cerrado ? null : abre || null}, cierra = ${cerrado ? null : cierra || null}
+        RETURNING id, fecha, cerrado, abre, cierra
+      `
+      return responseSuccess(res, { excepcion: nueva[0] }, 201)
+    }
+
+    if (action === 'horario-excepciones' && req.method === 'DELETE') {
+      const body = await leerBody(req)
+      const data = parseJSON(body)
+      if (!data) return responseError(res, 'JSON inválido')
+
+      const { id } = data
+      if (!id) return responseError(res, 'Falta id')
+
+      const result = await sql`DELETE FROM horario_excepciones WHERE id = ${id} RETURNING id`
+      if (result.length === 0) return responseError(res, 'No encontrada', 404)
+      return responseSuccess(res, { ok: true })
+    }
+
     return responseError(res, 'Acción no reconocida', 400)
   } catch (error) {
     console.error('ERROR REAL:', error.message)
