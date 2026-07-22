@@ -1,324 +1,284 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Pencil, Trash2, ImagePlus } from 'lucide-react'
+import { Scissors } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import Modal from '../components/Modal.jsx'
+import { hoyColombia } from '../lib/fechas.js'
+import { pedirPermisoNotificaciones, mostrarNotificacion } from '../lib/notificaciones.js'
 import CargandoTijera from '../components/CargandoTijera.jsx'
 
-function AdminProductos() {
-  const { admin } = useAuth()
-  const [productos, setProductos] = useState([])
-  const [cargando, setCargando] = useState(true)
+function Citas() {
+  const { cliente, cargando: cargandoAuth } = useAuth()
+  const [barberos, setBarberos] = useState([])
+  const [barberoSel, setBarberoSel] = useState(null)
+  const [fecha, setFecha] = useState('')
+  const [horarios, setHorarios] = useState([])
+  const [horaSel, setHoraSel] = useState(null)
+  const [cargando, setCargando] = useState(false)
+  const [sinDisponibilidad, setSinDisponibilidad] = useState('')
+  const [confirmada, setConfirmada] = useState(null)
 
-  const [editandoId, setEditandoId] = useState(null)
-  const [nombre, setNombre] = useState('')
-  const [descripcion, setDescripcion] = useState('')
-  const [precio, setPrecio] = useState('')
-  const [imagenUrl, setImagenUrl] = useState('')
-  const [subiendoFoto, setSubiendoFoto] = useState(false)
-  const [guardando, setGuardando] = useState(false)
-  const [aBorrar, setABorrar] = useState(null)
+  const [aviso, setAviso] = useState(null)
+  const [avisoRespondido, setAvisoRespondido] = useState(false)
 
   const navigate = useNavigate()
 
   useEffect(() => {
-    if (!admin) {
-      navigate('/admin-login')
-      return
+    if (cargandoAuth) return
+    if (!cliente) {
+      navigate('/login')
     }
-  }, [admin, navigate])
-
-  const cargarProductos = () => {
-    fetch('/api/admin?action=productos')
-      .then((res) => res.json())
-      .then((data) => {
-        setProductos(data.productos || [])
-        setCargando(false)
-      })
-      .catch((err) => {
-        toast.error(err.message)
-        setCargando(false)
-      })
-  }
+  }, [cliente, cargandoAuth, navigate])
 
   useEffect(() => {
-    if (admin) cargarProductos()
-  }, [admin])
+    fetch('/api/barberos')
+      .then((res) => res.json())
+      .then((data) => setBarberos(data))
+      .catch(() => toast.error('No se pudieron cargar los barberos'))
+  }, [])
 
-  const limpiarFormulario = () => {
-    setEditandoId(null)
-    setNombre('')
-    setDescripcion('')
-    setPrecio('')
-    setImagenUrl('')
-  }
-
-  const empezarEdicion = (p) => {
-    setEditandoId(p.id)
-    setNombre(p.nombre)
-    setDescripcion(p.descripcion || '')
-    setPrecio(String(p.precio).replace('.00', ''))
-    setImagenUrl(p.imagen_url || '')
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
-  const subirFoto = async (e) => {
-    const archivo = e.target.files[0]
-    if (!archivo) return
-    setSubiendoFoto(true)
-    try {
-      const res = await fetch(
-        `/api/subir-imagen?filename=${encodeURIComponent(archivo.name)}`,
-        {
-          method: 'POST',
-          body: archivo,
-        }
-      )
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      setImagenUrl(data.url)
-      toast.success('Foto subida')
-    } catch (err) {
-      toast.error('Error al subir la foto: ' + err.message)
-    } finally {
-      setSubiendoFoto(false)
-    }
-  }
-
-  const guardarProducto = async () => {
-    if (!nombre.trim() || !precio) {
-      toast.error('Nombre y precio son obligatorios')
+  useEffect(() => {
+    if (!barberoSel || !fecha) {
+      setHorarios([])
       return
     }
-    setGuardando(true)
+    setCargando(true)
+    setHoraSel(null)
+    setSinDisponibilidad('')
+    fetch(`/api/citas?accion=disponibilidad&barbero_id=${barberoSel}&fecha=${fecha}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setHorarios(data.disponibles || [])
+        setSinDisponibilidad(data.mensaje || '')
+        setCargando(false)
+      })
+      .catch(() => {
+        toast.error('Error al cargar horarios')
+        setCargando(false)
+      })
+  }, [barberoSel, fecha])
+
+  useEffect(() => {
+    if (!cliente) return
+
+    const revisarAviso = () => {
+      const hoy = hoyColombia()
+      fetch(`/api/citas?accion=mi-aviso&cliente_id=${cliente.id}&fecha=${hoy}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.aviso && (!aviso || aviso.notificacion_id !== data.aviso.notificacion_id)) {
+            setAviso(data.aviso)
+            setAvisoRespondido(false)
+            mostrarNotificacion(
+              'Tu turno está por comenzar',
+              `${data.aviso.barbero_nombre} te espera (${data.aviso.hora}). ¿Confirmas que llegas pronto?`
+            )
+          }
+        })
+        .catch(() => {})
+    }
+
+    revisarAviso()
+    const intervalo = setInterval(revisarAviso, 20000)
+    return () => clearInterval(intervalo)
+  }, [cliente, aviso])
+
+  const responderAviso = async (respuesta) => {
+    if (!aviso) return
     try {
-      const esEdicion = editandoId != null
-      const res = await fetch('/api/admin?action=productos', {
-        method: esEdicion ? 'PUT' : 'POST',
+      await fetch('/api/citas?accion=responder-aviso', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notificacion_id: aviso.notificacion_id, respuesta }),
+      })
+      toast.success('Respuesta enviada')
+      setAvisoRespondido(true)
+      setTimeout(() => {
+        setAviso(null)
+        setAvisoRespondido(false)
+      }, 3000)
+    } catch {
+      toast.error('No se pudo enviar la respuesta')
+    }
+  }
+
+  const confirmarCita = async () => {
+    if (!barberoSel || !fecha || !horaSel) return
+    setCargando(true)
+    try {
+      const res = await fetch('/api/citas?accion=crear', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: editandoId,
-          nombre: nombre.trim(),
-          descripcion: descripcion.trim(),
-          precio: Number(precio),
-          imagen_url: imagenUrl || null,
+          barbero_id: barberoSel,
+          cliente_id: cliente.id,
+          fecha,
+          hora: horaSel,
         }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      toast.success(esEdicion ? 'Producto actualizado' : 'Producto agregado')
-      limpiarFormulario()
-      cargarProductos()
+      if (!res.ok) throw new Error(data.error || 'Error al agendar')
+      setConfirmada(data.cita)
+      toast.success('¡Cita agendada!')
     } catch (err) {
       toast.error(err.message)
     } finally {
-      setGuardando(false)
+      setCargando(false)
     }
   }
 
-  const eliminarProducto = async () => {
-    if (!aBorrar) return
-    try {
-      const res = await fetch('/api/admin?action=productos', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: aBorrar.id }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      toast.success('Producto eliminado')
-      setABorrar(null)
-      cargarProductos()
-    } catch (err) {
-      toast.error(err.message)
-    }
+  const hoy = hoyColombia()
+
+  const bannerAviso = aviso && (
+    <div className="fixed inset-x-0 top-0 z-50 bg-amber-500 text-white p-4 shadow-lg">
+      <div className="max-w-md mx-auto text-center">
+        {avisoRespondido ? (
+          <p className="font-medium">¡Gracias! Tu respuesta fue enviada.</p>
+        ) : (
+          <>
+            <p className="font-medium mb-1">🔔 Tu turno está por comenzar</p>
+            <p className="text-sm mb-3">
+              {aviso.barbero_nombre} te espera ({aviso.hora}). ¿Llegas en 10-15 min?
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => responderAviso('confirmado')}
+                className="bg-white text-amber-600 rounded-lg px-3 py-2 text-sm font-medium transition active:scale-95"
+              >
+                Sí, voy en camino
+              </button>
+              <button
+                onClick={() => responderAviso('cancelado')}
+                className="bg-amber-700 text-white rounded-lg px-3 py-2 text-sm font-medium transition active:scale-95"
+              >
+                No puedo
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+
+  if (cargandoAuth || !cliente) {
+    return null
   }
 
-  const formatoPrecio = (valor) => {
-    if (valor == null) return ''
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      maximumFractionDigits: 0,
-    }).format(valor)
+  if (confirmada) {
+    return (
+      <div className="p-6 max-w-md mx-auto text-center">
+        {bannerAviso}
+        <div className="text-5xl mb-4">✅</div>
+        <h1 className="text-xl font-bold mb-2">¡Cita confirmada!</h1>
+        <p className="text-gray-600">
+          Te esperamos el {String(confirmada.fecha).split('T')[0].split('-').reverse().join('/')} a las {confirmada.hora}.
+        </p>
+        <button
+          onClick={() => {
+            setConfirmada(null)
+            setBarberoSel(null)
+            setFecha('')
+            setHoraSel(null)
+          }}
+          className="mt-6 bg-gray-900 text-white rounded-lg px-4 py-2 transition active:scale-95"
+        >
+          Agendar otra cita
+        </button>
+      </div>
+    )
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-2xl mx-auto">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-xl font-bold">Gestionar productos</h1>
-        <button
-          onClick={() => navigate('/admin')}
-          className="text-sm text-gray-500 dark:text-gray-400 underline"
-        >
-          Volver al panel
-        </button>
-      </div>
+    <div className="p-4 sm:p-6 max-w-md mx-auto">
+      {bannerAviso}
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-4 mb-6">
-        <h2 className="text-sm font-medium mb-3">
-          {editandoId ? 'Editar producto' : 'Nuevo producto'}
-        </h2>
-        <div className="space-y-2">
-          <input
-            type="text"
-            placeholder="Nombre"
-            value={nombre}
-            onChange={(e) => setNombre(e.target.value)}
-            className="w-full border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
-          />
-          <input
-            type="text"
-            placeholder="Descripción"
-            value={descripcion}
-            onChange={(e) => setDescripcion(e.target.value)}
-            className="w-full border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
-          />
-          <input
-            type="number"
-            placeholder="Precio (ej: 25000)"
-            value={precio}
-            onChange={(e) => setPrecio(e.target.value)}
-            className="w-full border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
-          />
+      <h1 className="text-xl font-bold mb-4">Aparta tu cita</h1>
 
-          <div className="border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg p-3">
-            <label className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mb-2">
-              <ImagePlus size={14} /> Foto del producto
-            </label>
-            {imagenUrl && (
-              <img
-                src={imagenUrl}
-                alt="Vista previa"
-                className="w-24 h-24 object-cover rounded-lg mb-2"
-              />
-            )}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={subirFoto}
-              disabled={subiendoFoto}
-              className="text-xs w-full"
-            />
-            {subiendoFoto && (
-              <div className="mt-1">
-                <CargandoTijera texto="Subiendo foto..." size={12} />
-              </div>
-            )}
-          </div>
+      <button
+        onClick={async () => {
+          const permiso = await pedirPermisoNotificaciones()
+          if (permiso === 'granted') {
+            toast.success('¡Notificaciones activadas!')
+          } else {
+            toast.info('Permiso de notificaciones: ' + permiso)
+          }
+        }}
+        className="w-full mb-4 bg-amber-500 text-white rounded-lg px-3 py-2 text-sm font-medium transition active:scale-95"
+      >
+        🔔 Activar notificaciones
+      </button>
 
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={guardarProducto}
-              disabled={guardando || subiendoFoto}
-              className="flex items-center justify-center gap-2 bg-gray-900 text-white rounded-lg px-3 py-2 text-sm font-medium transition active:scale-95 disabled:opacity-50 disabled:active:scale-100"
-            >
-              {guardando ? (
-                <CargandoTijera texto="Guardando..." size={14} className="text-white" />
-              ) : editandoId ? (
-                'Guardar cambios'
-              ) : (
-                'Agregar producto'
-              )}
-            </button>
-            {editandoId && (
-              <button
-                onClick={limpiarFormulario}
-                className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm transition active:scale-95"
-              >
-                Cancelar
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {cargando && (
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white dark:bg-gray-800 rounded-xl shadow p-3 flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg skeleton-shimmer" />
-              <div className="flex-1 space-y-2">
-                <div className="h-3 w-32 rounded skeleton-shimmer" />
-                <div className="h-3 w-20 rounded skeleton-shimmer" />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className="space-y-3">
-        {productos.map((p) => (
-          <div
-            key={p.id}
-            className="bg-white dark:bg-gray-800 rounded-xl shadow p-3 flex justify-between items-center"
+      <label className="block text-sm font-medium mb-2">1. Elige tu barbero</label>
+      <div className="grid grid-cols-2 gap-3 mb-5">
+        {barberos.map((b) => (
+          <button
+            key={b.id}
+            onClick={() => setBarberoSel(b.id)}
+            className={`rounded-xl border p-3 text-center transition active:scale-95 ${
+              barberoSel === b.id
+                ? 'border-gray-900 bg-gray-900 text-white'
+                : 'border-gray-300 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100'
+            }`}
           >
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-xl overflow-hidden shrink-0">
-                {p.imagen_url ? (
-                  <img
-                    src={p.imagen_url}
-                    alt={p.nombre}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  '🧴'
-                )}
-              </div>
-              <div>
-                <div className="font-medium text-sm">{p.nombre}</div>
-                {p.descripcion && (
-                  <div className="text-xs text-gray-400 dark:text-gray-500">{p.descripcion}</div>
-                )}
-                <div className="text-xs text-gray-500 dark:text-gray-400">{formatoPrecio(p.precio)}</div>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => empezarEdicion(p)}
-                aria-label="Editar"
-                className="flex items-center justify-center w-9 h-9 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 transition active:scale-95"
-              >
-                <Pencil size={16} />
-              </button>
-              <button
-                onClick={() => setABorrar(p)}
-                aria-label="Eliminar"
-                className="flex items-center justify-center w-9 h-9 rounded-lg bg-red-100 text-red-700 transition active:scale-95"
-              >
-                <Trash2 size={16} />
-              </button>
-            </div>
-          </div>
+            <Scissors size={22} className="mx-auto mb-1" />
+            <div className="text-sm font-medium">{b.nombre}</div>
+          </button>
         ))}
       </div>
 
-      <Modal
-        open={aBorrar != null}
-        onClose={() => setABorrar(null)}
-        title="Eliminar producto"
-      >
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          ¿Seguro que quieres eliminar <strong>{aBorrar?.nombre}</strong>? Esta acción no se puede deshacer.
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={eliminarProducto}
-            className="bg-red-600 text-white rounded-lg px-3 py-2 text-sm font-medium transition active:scale-95"
-          >
-            Sí, eliminar
-          </button>
-          <button
-            onClick={() => setABorrar(null)}
-            className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm transition active:scale-95"
-          >
-            Cancelar
-          </button>
-        </div>
-      </Modal>
+      <label className="block text-sm font-medium mb-2">2. Elige la fecha</label>
+      <input
+        type="date"
+        min={hoy}
+        value={fecha}
+        onChange={(e) => setFecha(e.target.value)}
+        className="w-full border rounded-lg px-3 py-2 mb-5 bg-white text-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-900"
+      />
+
+      {barberoSel && fecha && (
+        <>
+          <label className="block text-sm font-medium mb-2">3. Elige la hora</label>
+          {cargando && (
+            <div className="grid grid-cols-3 gap-2 mb-5">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="h-9 rounded-lg skeleton-shimmer" />
+              ))}
+            </div>
+          )}
+          {!cargando && horarios.length === 0 && (
+            <p className="text-gray-500 text-sm mb-5">{sinDisponibilidad || 'No hay horarios disponibles'}</p>
+          )}
+          {!cargando && horarios.length > 0 && (
+            <div className="grid grid-cols-3 gap-2 mb-5">
+              {horarios.map((h) => (
+                <button
+                  key={h}
+                  onClick={() => setHoraSel(h)}
+                  className={`rounded-lg border py-2 text-sm transition active:scale-95 ${
+                    horaSel === h
+                      ? 'border-gray-900 bg-gray-900 text-white'
+                      : 'border-gray-300 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100'
+                  }`}
+                >
+                  {h}
+                </button>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {horaSel && (
+        <button
+          onClick={confirmarCita}
+          disabled={cargando}
+          className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white rounded-lg px-3 py-3 font-medium transition active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+        >
+          {cargando ? <CargandoTijera texto="Agendando..." size={16} className="text-white" /> : `Confirmar cita a las ${horaSel}`}
+        </button>
+      )}
     </div>
   )
 }
 
-export default AdminProductos
+export default Citas
