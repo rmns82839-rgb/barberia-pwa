@@ -161,7 +161,7 @@ function Home() {
             return (
               <div
                 key={barbero.id}
-                className="bg-white dark:bg-gray-800 rounded-xl shadow p-4 flex flex-col items-center text-center"
+                className="bg-white dark:bg-gray-800 rounded-xl shadow p-4 flex flex-col items-center text-center h-full"
               >
                 <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mb-3 overflow-hidden">
                   {barbero.foto ? (
@@ -171,9 +171,9 @@ function Home() {
                   )}
                 </div>
                 <h3 className="font-semibold">{barbero.alias || barbero.nombre}</h3>
-                {barbero.especialidad && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{barbero.especialidad}</p>
-                )}
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 min-h-[1rem]">
+                  {barbero.especialidad || '\u00A0'}
+                </p>
                 <span
                   className={`mt-2 text-xs px-2 py-1 rounded-full ${
                     barbero.estado === 'disponible'
@@ -195,7 +195,7 @@ function Home() {
                   <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">Sin reseñas todavía</p>
                 )}
 
-                <div className="grid grid-cols-2 gap-2 w-full mt-3">
+                <div className="grid grid-cols-2 gap-2 w-full mt-auto pt-3">
                   <button
                     onClick={() => abrirGaleria(barbero.id)}
                     className="flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-3 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 transition active:scale-95"

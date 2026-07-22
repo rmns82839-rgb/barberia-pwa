@@ -1,6 +1,6 @@
 import { neon } from "@neondatabase/serverless"
 import dotenv from "dotenv"
-import { requireBarbero } from "./_middleware.js"
+import { requireBarbero, requireCliente } from "./_middleware.js"
 
 dotenv.config({ path: ".env.local" })
 
@@ -29,6 +29,55 @@ export default async function handler(req, res) {
   try {
     const sql = neon(process.env.DATABASE_URL)
     const accion = req.query.accion
+
+    // ---- GET: mis citas futuras (cliente logueado) ----
+    if (req.method === "GET" && accion === "mis-citas") {
+      const cliente = await requireCliente(req, res)
+      if (!cliente) return
+
+      const hoy = hoyColombia()
+      const citas = await sql`
+        SELECT
+          c.id, c.fecha, c.tipo, c.estado,
+          to_char(c.hora, 'HH24:MI') AS hora,
+          c.servicio,
+          b.nombre AS barbero_nombre, b.alias AS barbero_alias
+        FROM citas c
+        JOIN barberos b ON b.id = c.barbero_id
+        WHERE c.cliente_id = ${cliente.id}
+          AND c.fecha >= ${hoy}
+          AND c.estado NOT IN ('cancelada', 'atendida')
+        ORDER BY c.fecha ASC, c.hora ASC
+      `
+      return res.status(200).json({ citas })
+    }
+
+    // ---- POST: cancelar una cita propia (cliente logueado) ----
+    if (req.method === "POST" && accion === "cancelar") {
+      const cliente = await requireCliente(req, res)
+      if (!cliente) return
+
+      const raw = await leerBody(req)
+      let data
+      try {
+        data = JSON.parse(raw)
+      } catch {
+        return res.status(400).json({ error: "JSON inválido" })
+      }
+      const { cita_id } = data
+      if (!cita_id) return res.status(400).json({ error: "Falta cita_id" })
+
+      const result = await sql`
+        UPDATE citas
+        SET estado = 'cancelada'
+        WHERE id = ${cita_id} AND cliente_id = ${cliente.id}
+        RETURNING id
+      `
+      if (result.length === 0) {
+        return res.status(404).json({ error: "Cita no encontrada o no te pertenece" })
+      }
+      return res.status(200).json({ ok: true })
+    }
 
     // ---- GET: mi aviso de proximidad (cliente) ----
     if (req.method === "GET" && accion === "mi-aviso") {
@@ -107,6 +156,33 @@ export default async function handler(req, res) {
         },
         notificacion_id: notif[0].id,
       })
+    }
+
+    // ---- POST: marcar cita como atendida (solo el barbero dueño de esa cita) ----
+    if (req.method === "POST" && accion === "marcar-atendida") {
+      const barbero = await requireBarbero(req, res)
+      if (!barbero) return
+
+      const raw = await leerBody(req)
+      let data
+      try {
+        data = JSON.parse(raw)
+      } catch {
+        return res.status(400).json({ error: "JSON inválido" })
+      }
+      const { cita_id } = data
+      if (!cita_id) return res.status(400).json({ error: "Falta cita_id" })
+
+      const result = await sql`
+        UPDATE citas
+        SET estado = 'atendida'
+        WHERE id = ${cita_id} AND barbero_id = ${barbero.id}
+        RETURNING id
+      `
+      if (result.length === 0) {
+        return res.status(404).json({ error: "Cita no encontrada o no te pertenece" })
+      }
+      return res.status(200).json({ ok: true })
     }
 
     // ---- GET: estado de un aviso (para hacer polling mientras el barbero espera respuesta) ----

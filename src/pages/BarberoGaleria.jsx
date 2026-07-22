@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
   Trash2, ImagePlus, KeyRound, Star, LogOut,
-  Power, UserPlus, ClipboardPlus, Bell,
+  Power, UserPlus, ClipboardPlus, Bell, Check,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { hoyColombia } from '../lib/fechas.js'
@@ -17,7 +17,7 @@ const chipGrande =
   'flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-3 text-xs font-medium transition active:scale-95 disabled:opacity-50 disabled:active:scale-100'
 
 function BarberoGaleria() {
-  const { barbero, logoutBarbero } = useAuth()
+  const { barbero, logoutBarbero, cargando: cargandoAuth } = useAuth()
   const navigate = useNavigate()
 
   // ---- Perfil ----
@@ -50,12 +50,14 @@ function BarberoGaleria() {
   const [avisoResultado, setAvisoResultado] = useState(null)
   const [citasHoy, setCitasHoy] = useState([])
   const [cargandoCitas, setCargandoCitas] = useState(true)
+  const [marcandoId, setMarcandoId] = useState(null)
 
   useEffect(() => {
+    if (cargandoAuth) return
     if (!barbero) {
-      navigate('/staff-login')
+      navigate('/barbero-login')
     }
-  }, [barbero, navigate])
+  }, [barbero, cargandoAuth, navigate])
 
   const cargarFotos = () => {
     if (!barbero) return
@@ -119,6 +121,25 @@ function BarberoGaleria() {
   useEffect(() => {
     cargarCitasHoy()
   }, [barbero])
+
+  const marcarAtendida = async (cita_id) => {
+    setMarcandoId(cita_id)
+    try {
+      const res = await fetch('/api/citas?accion=marcar-atendida', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cita_id }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setCitasHoy((prev) => prev.map((c) => (c.id === cita_id ? { ...c, estado: 'atendida' } : c)))
+      toast.success('Cita marcada como atendida')
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      setMarcandoId(null)
+    }
+  }
 
   // Polling de la respuesta del cliente al aviso
   useEffect(() => {
@@ -359,7 +380,7 @@ function BarberoGaleria() {
     }
   }
 
-  if (!barbero) return null
+  if (cargandoAuth || !barbero) return null
 
   return (
     <div className="p-4 sm:p-6 max-w-2xl mx-auto">
@@ -374,7 +395,7 @@ function BarberoGaleria() {
             Contraseña
           </button>
           <button
-            onClick={() => { logoutBarbero(); navigate('/staff-login') }}
+            onClick={() => { logoutBarbero(); navigate('/barbero-login') }}
             className={`${chip} bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300`}
           >
             <LogOut size={14} />
@@ -385,7 +406,7 @@ function BarberoGaleria() {
 
       {/* ---- Estado y acciones del día ---- */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-4 mb-6">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-1">
           <h2 className="text-sm font-medium">Tu estado</h2>
           <span
             className={`text-xs px-2 py-1 rounded-full ${
@@ -397,6 +418,9 @@ function BarberoGaleria() {
             {estado === 'disponible' ? 'Disponible' : 'Ocupado'}
           </span>
         </div>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+          Marca tu estado, registra clientes sin cita (walk-in), y avisa al siguiente cuando estés por desocuparte.
+        </p>
 
         <div className="grid grid-cols-3 gap-2">
           <button
@@ -435,7 +459,7 @@ function BarberoGaleria() {
         </div>
 
         {(() => {
-          const siguiente = citasHoy.find((c) => c.tipo === 'agendada')
+          const siguiente = citasHoy.find((c) => c.tipo === 'agendada' && c.estado !== 'atendida')
           return siguiente ? (
             <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
               Siguiente en la fila: <strong>{siguiente.cliente_nombre}</strong> (cita de las {siguiente.hora})
@@ -508,7 +532,7 @@ function BarberoGaleria() {
       {!cargandoCitas && citasHoy.length > 0 && (
         <div className="space-y-2 mb-6">
           {citasHoy.map((c) => (
-            <div key={c.id} className="bg-white dark:bg-gray-800 rounded-xl shadow p-3 flex justify-between items-center">
+            <div key={c.id} className={`bg-white dark:bg-gray-800 rounded-xl shadow p-3 flex justify-between items-center ${c.estado === 'atendida' ? 'opacity-50' : ''}`}>
               <div>
                 <div className="font-semibold text-sm">{c.hora}</div>
                 <div className="text-xs text-gray-600 dark:text-gray-400">
@@ -516,9 +540,29 @@ function BarberoGaleria() {
                   {c.cliente_telefono && <span className="text-gray-400 dark:text-gray-500"> · {c.cliente_telefono}</span>}
                 </div>
               </div>
-              <span className={`text-xs px-2 py-1 rounded-full ${c.tipo === 'walk_in' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
-                {c.tipo === 'walk_in' ? 'Sin cita' : 'Agendada'}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className={`text-xs px-2 py-1 rounded-full ${c.tipo === 'walk_in' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                  {c.tipo === 'walk_in' ? 'Sin cita' : 'Agendada'}
+                </span>
+                {c.estado === 'atendida' ? (
+                  <span className="flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
+                    <Check size={12} /> Atendida
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => marcarAtendida(c.id)}
+                    disabled={marcandoId === c.id}
+                    className="flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 transition active:scale-95 disabled:opacity-50"
+                  >
+                    {marcandoId === c.id ? (
+                      <CargandoTijera texto={null} size={12} className="text-white dark:text-gray-900" />
+                    ) : (
+                      <Check size={12} />
+                    )}
+                    Atendida
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -597,6 +641,11 @@ function BarberoGaleria() {
 
       {/* ---- Galería de trabajos ---- */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-4 mb-6">
+        <h2 className="text-sm font-semibold mb-1">Tu portafolio de trabajos</h2>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+          Sube fotos de los cortes que has hecho. Los clientes las ven en Inicio antes de agendar —
+          es tu vitrina para mostrar tu estilo y atraer más citas.
+        </p>
         <label className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mb-2">
           <ImagePlus size={14} /> Agregar nueva foto
         </label>

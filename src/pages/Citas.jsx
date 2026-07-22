@@ -192,7 +192,15 @@ function Citas() {
     <div className="p-4 sm:p-6 max-w-md mx-auto">
       {bannerAviso}
 
-      <h1 className="text-xl font-bold mb-4">Aparta tu cita</h1>
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-xl font-bold">Aparta tu cita</h1>
+        <button
+          onClick={() => navigate('/mis-citas')}
+          className="text-sm text-blue-600 dark:text-blue-400 font-medium"
+        >
+          Mis citas
+        </button>
+      </div>
 
       <button
         onClick={async () => {

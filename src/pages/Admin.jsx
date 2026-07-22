@@ -24,7 +24,7 @@ function Admin() {
 
   useEffect(() => {
     if (!admin) {
-      navigate('/staff-login')
+      navigate('/admin-login')
       return
     }
     const hoy = new Date().toLocaleDateString('en-CA')
@@ -53,7 +53,7 @@ function Admin() {
 
   const cerrarSesion = () => {
     logoutAdmin()
-    navigate('/staff-login')
+    navigate('/admin-login')
   }
 
   const guardarCredenciales = async () => {
