@@ -1,23 +1,31 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Trash2, ImagePlus, KeyRound, Star } from 'lucide-react'
+import {
+  Trash2, ImagePlus, KeyRound, Star, LogOut,
+  Power, UserPlus, ClipboardPlus, Bell,
+} from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { hoyColombia } from '../lib/fechas.js'
 import Modal from '../components/Modal.jsx'
 import CargandoTijera from '../components/CargandoTijera.jsx'
+
+const chip =
+  'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition active:scale-95'
+
+const chipGrande =
+  'flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-3 text-xs font-medium transition active:scale-95 disabled:opacity-50 disabled:active:scale-100'
 
 function BarberoGaleria() {
   const { barbero, logoutBarbero } = useAuth()
   const navigate = useNavigate()
+
+  // ---- Perfil ----
   const [fotos, setFotos] = useState([])
   const [cargando, setCargando] = useState(true)
   const [subiendo, setSubiendo] = useState(false)
   const [descripcion, setDescripcion] = useState('')
   const [aBorrar, setABorrar] = useState(null)
-  const [modalPassword, setModalPassword] = useState(false)
-  const [passwordActual, setPasswordActual] = useState('')
-  const [passwordNueva, setPasswordNueva] = useState('')
-  const [cambiando, setCambiando] = useState(false)
   const [resenas, setResenas] = useState([])
   const [promedio, setPromedio] = useState(null)
   const [subiendoPerfil, setSubiendoPerfil] = useState(false)
@@ -26,11 +34,26 @@ function BarberoGaleria() {
   const [alias, setAlias] = useState('')
   const [especialidad, setEspecialidad] = useState('')
   const [guardandoPerfil, setGuardandoPerfil] = useState(false)
+  const [modalPassword, setModalPassword] = useState(false)
+  const [passwordActual, setPasswordActual] = useState('')
+  const [passwordNueva, setPasswordNueva] = useState('')
+  const [cambiando, setCambiando] = useState(false)
+
+  // ---- Operativo: estado, walk-ins, avisos, citas de hoy ----
+  const [estado, setEstado] = useState(null)
+  const [actualizandoEstado, setActualizandoEstado] = useState(false)
+  const [modalWalkIn, setModalWalkIn] = useState(false)
+  const [walkInNombre, setWalkInNombre] = useState('')
+  const [walkInTelefono, setWalkInTelefono] = useState('')
+  const [guardandoWalkIn, setGuardandoWalkIn] = useState(false)
+  const [avisando, setAvisando] = useState(false)
+  const [avisoResultado, setAvisoResultado] = useState(null)
+  const [citasHoy, setCitasHoy] = useState([])
+  const [cargandoCitas, setCargandoCitas] = useState(true)
 
   useEffect(() => {
     if (!barbero) {
-      navigate('/barbero-login')
-      return
+      navigate('/staff-login')
     }
   }, [barbero, navigate])
 
@@ -59,13 +82,10 @@ function BarberoGaleria() {
           setNombre(yo.nombre || '')
           setAlias(yo.alias || '')
           setEspecialidad(yo.especialidad || '')
+          setEstado(yo.estado || 'disponible')
         }
       })
       .catch(() => {})
-  }, [barbero])
-
-  useEffect(() => {
-    cargarFotos()
   }, [barbero])
 
   useEffect(() => {
@@ -78,6 +98,132 @@ function BarberoGaleria() {
       })
       .catch(() => {})
   }, [barbero])
+
+  useEffect(() => {
+    cargarFotos()
+  }, [barbero])
+
+  const cargarCitasHoy = () => {
+    if (!barbero) return
+    setCargandoCitas(true)
+    fetch(`/api/citas?accion=dia&fecha=${hoyColombia()}`)
+      .then((res) => res.json())
+      .then((data) => {
+        const mias = (data.citas || []).filter((c) => c.barbero_id === barbero.id)
+        setCitasHoy(mias)
+        setCargandoCitas(false)
+      })
+      .catch(() => setCargandoCitas(false))
+  }
+
+  useEffect(() => {
+    cargarCitasHoy()
+  }, [barbero])
+
+  // Polling de la respuesta del cliente al aviso
+  useEffect(() => {
+    if (!avisoResultado || !avisoResultado.notificacion_id || avisoResultado.respuesta) return
+    const intervalo = setInterval(() => {
+      fetch(`/api/citas?accion=estado-aviso&notificacion_id=${avisoResultado.notificacion_id}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.respuesta) {
+            setAvisoResultado((prev) => (prev ? { ...prev, respuesta: data.respuesta } : prev))
+            toast[data.respuesta === 'confirmado' ? 'success' : 'warning'](
+              data.respuesta === 'confirmado' ? 'Cliente confirmó, va en camino' : 'El cliente no puede venir'
+            )
+          }
+        })
+        .catch(() => {})
+    }, 5000)
+    return () => clearInterval(intervalo)
+  }, [avisoResultado])
+
+  const cambiarEstado = async () => {
+    const nuevoEstado = estado === 'disponible' ? 'ocupado' : 'disponible'
+    setActualizandoEstado(true)
+    setEstado(nuevoEstado)
+    try {
+      const res = await fetch('/api/barbero-estado', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: nuevoEstado }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+    } catch (err) {
+      toast.error(err.message)
+      setEstado(estado)
+    } finally {
+      setActualizandoEstado(false)
+    }
+  }
+
+  const horaActual = () =>
+    new Date().toLocaleTimeString('es-CO', {
+      timeZone: 'America/Bogota',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    })
+
+  const registrarWalkIn = async (conNombre) => {
+    setGuardandoWalkIn(true)
+    try {
+      const body = { fecha: hoyColombia(), hora: horaActual() }
+      if (conNombre) {
+        body.nombre = walkInNombre.trim()
+        body.telefono = walkInTelefono.trim()
+      }
+      const res = await fetch('/api/citas?accion=walkin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      toast.success('Walk-in registrado')
+      setEstado('ocupado')
+      setModalWalkIn(false)
+      setWalkInNombre('')
+      setWalkInTelefono('')
+      cargarCitasHoy()
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      setGuardandoWalkIn(false)
+    }
+  }
+
+  const avisarSiguiente = async () => {
+    setAvisando(true)
+    setAvisoResultado(null)
+    try {
+      const res = await fetch('/api/citas?accion=avisar-siguiente', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      if (data.mensaje) {
+        toast.info(data.mensaje)
+        setAvisoResultado({ mensaje: data.mensaje })
+      } else {
+        const tel = data.cita.cliente_telefono.replace(/\D/g, '')
+        const texto = encodeURIComponent(
+          `✂️ ¡Hola ${data.cita.cliente_nombre}! 👋 Tu turno en la barbería está por comenzar a las ${data.cita.hora} ⏰. ¿Confirmas que llegas en los próximos 10-15 minutos? 🙌`
+        )
+        const link = `https://wa.me/57${tel}?text=${texto}`
+        setAvisoResultado({
+          cita: data.cita,
+          link,
+          notificacion_id: data.notificacion_id,
+          respuesta: null,
+        })
+      }
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      setAvisando(false)
+    }
+  }
 
   const guardarPerfil = async () => {
     if (!nombre.trim()) {
@@ -125,7 +271,7 @@ function BarberoGaleria() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
 
-      setFotoPerfil(data.foto)
+      setFotoPerfil(data.perfil.foto)
       toast.success('Foto de perfil actualizada')
     } catch (err) {
       toast.error(err.message)
@@ -217,25 +363,168 @@ function BarberoGaleria() {
 
   return (
     <div className="p-4 sm:p-6 max-w-2xl mx-auto">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-xl font-bold">Mi galería de trabajos</h1>
-        <div className="flex gap-3">
+      <div className="flex flex-wrap justify-between items-center gap-2 mb-6">
+        <h1 className="text-xl font-bold">Mi panel</h1>
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setModalPassword(true)}
-            className="flex items-center gap-1 text-sm text-blue-600 underline"
+            className={`${chip} bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300`}
           >
             <KeyRound size={14} />
-            Cambiar contraseña
+            Contraseña
           </button>
           <button
-            onClick={() => { logoutBarbero(); navigate('/barbero-login') }}
-            className="text-sm text-gray-500 dark:text-gray-400 underline"
+            onClick={() => { logoutBarbero(); navigate('/staff-login') }}
+            className={`${chip} bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300`}
           >
+            <LogOut size={14} />
             Cerrar sesión
           </button>
         </div>
       </div>
 
+      {/* ---- Estado y acciones del día ---- */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-4 mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-medium">Tu estado</h2>
+          <span
+            className={`text-xs px-2 py-1 rounded-full ${
+              estado === 'disponible'
+                ? 'bg-green-100 text-green-700'
+                : 'bg-red-100 text-red-700'
+            }`}
+          >
+            {estado === 'disponible' ? 'Disponible' : 'Ocupado'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2">
+          <button
+            onClick={cambiarEstado}
+            disabled={actualizandoEstado}
+            className={`${chipGrande} bg-gray-900 dark:bg-gray-700 text-white`}
+          >
+            {actualizandoEstado ? (
+              <CargandoTijera texto={null} size={18} className="text-white" />
+            ) : (
+              <Power size={18} />
+            )}
+            <span>{estado === 'disponible' ? 'Marcar ocupado' : 'Marcar disponible'}</span>
+          </button>
+
+          <button
+            onClick={() => registrarWalkIn(false)}
+            disabled={guardandoWalkIn}
+            className={`${chipGrande} bg-blue-600 text-white`}
+          >
+            {guardandoWalkIn ? (
+              <CargandoTijera texto={null} size={18} className="text-white" />
+            ) : (
+              <UserPlus size={18} />
+            )}
+            <span>Walk-in rápido</span>
+          </button>
+
+          <button
+            onClick={() => setModalWalkIn(true)}
+            className={`${chipGrande} border border-blue-600 text-blue-600 dark:text-blue-400`}
+          >
+            <ClipboardPlus size={18} />
+            <span>Con nombre</span>
+          </button>
+        </div>
+
+        {(() => {
+          const siguiente = citasHoy.find((c) => c.tipo === 'agendada')
+          return siguiente ? (
+            <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
+              Siguiente en la fila: <strong>{siguiente.cliente_nombre}</strong> (cita de las {siguiente.hora})
+            </p>
+          ) : (
+            <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-2">
+              No tienes más citas agendadas hoy
+            </p>
+          )
+        })()}
+
+        <button
+          onClick={avisarSiguiente}
+          disabled={avisando}
+          className={`${chipGrande} w-full mt-2 bg-amber-500 text-white`}
+        >
+          {avisando ? (
+            <CargandoTijera texto={null} size={18} className="text-white" />
+          ) : (
+            <Bell size={18} />
+          )}
+          <span>Avisar siguiente</span>
+        </button>
+
+        {avisoResultado && !avisoResultado.mensaje && (
+          <div className="mt-3 text-xs bg-amber-50 dark:bg-amber-950/40 rounded-lg p-3">
+            <p className="mb-2">
+              Siguiente: <strong>{avisoResultado.cita.cliente_nombre}</strong> ({avisoResultado.cita.hora})
+            </p>
+            <a
+              href={avisoResultado.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block bg-green-600 text-white text-center rounded-lg px-2 py-2 mb-2 font-medium"
+            >
+              Enviar WhatsApp
+            </a>
+            {avisoResultado.respuesta === 'confirmado' && (
+              <p className="bg-green-100 text-green-700 rounded-lg px-2 py-1 text-center font-medium">
+                ✅ Confirmó, va en camino
+              </p>
+            )}
+            {avisoResultado.respuesta === 'cancelado' && (
+              <p className="bg-red-100 text-red-700 rounded-lg px-2 py-1 text-center font-medium">
+                ❌ No puede venir
+              </p>
+            )}
+            {!avisoResultado.respuesta && (
+              <p className="text-gray-400 dark:text-gray-500 text-center">Esperando respuesta...</p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ---- Citas de hoy (solo las mías) ---- */}
+      <h2 className="text-sm font-medium mb-2">Tus citas de hoy</h2>
+      {cargandoCitas && (
+        <div className="space-y-2 mb-6">
+          {[1, 2].map((i) => (
+            <div key={i} className="bg-white dark:bg-gray-800 rounded-xl shadow p-3">
+              <div className="h-3 w-16 rounded skeleton-shimmer mb-2" />
+              <div className="h-3 w-32 rounded skeleton-shimmer" />
+            </div>
+          ))}
+        </div>
+      )}
+      {!cargandoCitas && citasHoy.length === 0 && (
+        <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">No tienes citas para hoy.</p>
+      )}
+      {!cargandoCitas && citasHoy.length > 0 && (
+        <div className="space-y-2 mb-6">
+          {citasHoy.map((c) => (
+            <div key={c.id} className="bg-white dark:bg-gray-800 rounded-xl shadow p-3 flex justify-between items-center">
+              <div>
+                <div className="font-semibold text-sm">{c.hora}</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400">
+                  {c.cliente_nombre || 'Sin registro'}
+                  {c.cliente_telefono && <span className="text-gray-400 dark:text-gray-500"> · {c.cliente_telefono}</span>}
+                </div>
+              </div>
+              <span className={`text-xs px-2 py-1 rounded-full ${c.tipo === 'walk_in' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                {c.tipo === 'walk_in' ? 'Sin cita' : 'Agendada'}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ---- Perfil ---- */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-4 mb-6">
         <div className="flex items-center gap-4 mb-4">
           <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center overflow-hidden shrink-0">
@@ -256,7 +545,7 @@ function BarberoGaleria() {
             />
             {subiendoPerfil && (
               <div className="mt-1">
-                <CargandoTijera texto="Subiendo foto..." />
+                <CargandoTijera texto="Subiendo foto..." size={12} />
               </div>
             )}
           </div>
@@ -295,13 +584,18 @@ function BarberoGaleria() {
           <button
             onClick={guardarPerfil}
             disabled={guardandoPerfil}
-            className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white rounded-lg px-3 py-2 text-sm font-medium transition active:scale-95 disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg px-3 py-2 text-sm font-medium transition active:scale-95 disabled:opacity-50"
           >
-            {guardandoPerfil ? <CargandoTijera texto="Guardando..." size={14} className="text-white" /> : 'Guardar perfil'}
+            {guardandoPerfil ? (
+              <CargandoTijera texto="Guardando..." size={14} className="text-white dark:text-gray-900" />
+            ) : (
+              'Guardar perfil'
+            )}
           </button>
         </div>
       </div>
 
+      {/* ---- Galería de trabajos ---- */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-4 mb-6">
         <label className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mb-2">
           <ImagePlus size={14} /> Agregar nueva foto
@@ -322,7 +616,7 @@ function BarberoGaleria() {
         />
         {subiendo && (
           <div className="mt-1">
-            <CargandoTijera texto="Subiendo foto..." />
+            <CargandoTijera texto="Subiendo foto..." size={12} />
           </div>
         )}
       </div>
@@ -340,7 +634,7 @@ function BarberoGaleria() {
       )}
 
       {!cargando && fotos.length > 0 && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-2 mb-6">
           {fotos.map((f) => (
             <div key={f.id} className="group">
               <div className="relative aspect-square rounded-lg overflow-hidden">
@@ -363,7 +657,8 @@ function BarberoGaleria() {
         </div>
       )}
 
-      <h2 className="text-sm font-medium mb-2 mt-8">
+      {/* ---- Reseñas ---- */}
+      <h2 className="text-sm font-medium mb-2">
         Tus reseñas {promedio && `— ${promedio} ⭐ (${resenas.length})`}
       </h2>
       {resenas.length === 0 ? (
@@ -379,7 +674,7 @@ function BarberoGaleria() {
                     <Star
                       key={n}
                       size={13}
-                      className={n <= r.calificacion ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}
+                      className={n <= r.calificacion ? 'fill-amber-400 text-amber-400' : 'text-gray-300 dark:text-gray-600'}
                     />
                   ))}
                 </div>
@@ -389,6 +684,33 @@ function BarberoGaleria() {
           ))}
         </div>
       )}
+
+      {/* ---- Modales ---- */}
+      <Modal open={modalWalkIn} onClose={() => setModalWalkIn(false)} title="Registrar walk-in con nombre">
+        <div className="space-y-2">
+          <input
+            type="text"
+            placeholder="Nombre"
+            value={walkInNombre}
+            onChange={(e) => setWalkInNombre(e.target.value)}
+            className="w-full border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
+          />
+          <input
+            type="tel"
+            placeholder="Teléfono (opcional)"
+            value={walkInTelefono}
+            onChange={(e) => setWalkInTelefono(e.target.value)}
+            className="w-full border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
+          />
+          <button
+            onClick={() => registrarWalkIn(true)}
+            disabled={guardandoWalkIn || !walkInNombre.trim()}
+            className="w-full bg-blue-600 text-white rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
+          >
+            {guardandoWalkIn ? <CargandoTijera texto="Guardando..." size={14} className="text-white" /> : 'Registrar'}
+          </button>
+        </div>
+      </Modal>
 
       <Modal open={aBorrar != null} onClose={() => setABorrar(null)} title="Eliminar foto">
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">¿Seguro que quieres eliminar esta foto?</p>
@@ -401,7 +723,7 @@ function BarberoGaleria() {
           </button>
           <button
             onClick={() => setABorrar(null)}
-            className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm transition active:scale-95"
+            className="border dark:border-gray-700 rounded-lg px-3 py-2 text-sm transition active:scale-95"
           >
             Cancelar
           </button>
@@ -427,9 +749,13 @@ function BarberoGaleria() {
           <button
             onClick={cambiarPassword}
             disabled={cambiando}
-            className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white rounded-lg px-3 py-2 text-sm font-medium transition active:scale-95 disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg px-3 py-2 text-sm font-medium transition active:scale-95 disabled:opacity-50"
           >
-            {cambiando ? <CargandoTijera texto="Guardando..." size={14} className="text-white" /> : 'Actualizar contraseña'}
+            {cambiando ? (
+              <CargandoTijera texto="Guardando..." size={14} className="text-white dark:text-gray-900" />
+            ) : (
+              'Actualizar contraseña'
+            )}
           </button>
         </div>
       </Modal>

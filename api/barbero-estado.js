@@ -1,5 +1,6 @@
 import { neon } from "@neondatabase/serverless"
 import dotenv from "dotenv"
+import { requireBarbero } from "./_middleware.js"
 
 dotenv.config({ path: ".env.local" })
 
@@ -17,18 +18,17 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Solo el barbero dueño de la sesión puede cambiar SU propio estado
+    const barbero = await requireBarbero(req, res)
+    if (!barbero) return
+
     const raw = await leerBody(req)
-    let barbero_id, estado
+    let estado
     try {
       const parsed = JSON.parse(raw)
-      barbero_id = parsed.barbero_id
       estado = parsed.estado
     } catch {
       return res.status(400).json({ error: "JSON inválido" })
-    }
-
-    if (!barbero_id || !estado) {
-      return res.status(400).json({ error: "Faltan barbero_id o estado" })
     }
 
     if (estado !== "disponible" && estado !== "ocupado") {
@@ -39,7 +39,7 @@ export default async function handler(req, res) {
     const actualizado = await sql`
       UPDATE barberos
       SET estado = ${estado}
-      WHERE id = ${barbero_id}
+      WHERE id = ${barbero.id}
       RETURNING id, nombre, estado
     `
 

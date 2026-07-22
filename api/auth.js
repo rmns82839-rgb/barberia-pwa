@@ -1,5 +1,5 @@
 import { getDb, leerBody, parseJSON, responseError, responseSuccess } from './_db.js'
-import { generarToken, ponerCookieSesion, borrarCookieSesion, verificarSesion, requireBarbero } from './_middleware.js'
+import { generarToken, ponerCookieSesion, borrarCookieSesion, verificarSesion, requireBarbero, requireAdmin } from './_middleware.js'
 import { scryptSync, timingSafeEqual, randomBytes } from 'crypto'
 
 function verificarPassword(password, hashGuardado) {
@@ -139,6 +139,42 @@ export default async function handler(req, res) {
       return responseSuccess(res, { ok: true })
     } catch (error) {
       console.error('ERROR en barbero-cambiar-password:', error.message)
+      return responseError(res, error.message, 500)
+    }
+  }
+
+  // ADMIN: CAMBIAR USUARIO Y/O CONTRASEÑA
+  if (action === 'admin-cambiar-password' && req.method === 'POST') {
+    try {
+      const adminSesion = await requireAdmin(req, res)
+      if (!adminSesion) return
+
+      const body = await leerBody(req)
+      const data = parseJSON(body)
+      if (!data) return responseError(res, 'JSON inválido')
+
+      const { passwordActual, passwordNueva, usuarioNuevo } = data
+      if (!passwordActual) {
+        return responseError(res, 'Falta la contraseña actual')
+      }
+      if (passwordNueva && passwordNueva.length < 6) {
+        return responseError(res, 'La nueva contraseña debe tener al menos 6 caracteres')
+      }
+
+      const rows = await sql`SELECT usuario, password_hash FROM admins WHERE id = ${adminSesion.id}`
+      if (rows.length === 0) return responseError(res, 'Admin no encontrado', 404)
+
+      const passwordValido = verificarPassword(passwordActual, rows[0].password_hash)
+      if (!passwordValido) return responseError(res, 'La contraseña actual no es correcta', 401)
+
+      const nuevoUsuario = usuarioNuevo && usuarioNuevo.trim() ? usuarioNuevo.trim() : rows[0].usuario
+      const nuevoHash = passwordNueva ? generarHash(passwordNueva) : rows[0].password_hash
+
+      await sql`UPDATE admins SET usuario = ${nuevoUsuario}, password_hash = ${nuevoHash} WHERE id = ${adminSesion.id}`
+
+      return responseSuccess(res, { ok: true, usuario: nuevoUsuario })
+    } catch (error) {
+      console.error('ERROR en admin-cambiar-password:', error.message)
       return responseError(res, error.message, 500)
     }
   }

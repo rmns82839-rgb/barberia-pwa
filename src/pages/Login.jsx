@@ -78,6 +78,15 @@ function Login() {
           y quedarás registrado automáticamente al ingresar.
         </p>
       </div>
+
+      <div className="mt-8 text-center">
+        <button
+          onClick={() => navigate('/barbero-login')}
+          className="text-xs text-gray-300 dark:text-gray-600 hover:text-gray-400 dark:hover:text-gray-500 transition"
+        >
+          ¿Eres barbero?
+        </button>
+      </div>
     </div>
   )
 }

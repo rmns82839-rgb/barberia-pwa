@@ -1,5 +1,6 @@
 import { neon } from "@neondatabase/serverless"
 import dotenv from "dotenv"
+import { requireBarbero } from "./_middleware.js"
 
 dotenv.config({ path: ".env.local" })
 
@@ -61,6 +62,61 @@ export default async function handler(req, res) {
       `
       if (result.length === 0) return res.status(404).json({ error: "Notificación no encontrada" })
       return res.status(200).json({ ok: true })
+    }
+
+    // ---- POST: barbero avisa a su siguiente cliente (solo su propia fila) ----
+    if (req.method === "POST" && accion === "avisar-siguiente") {
+      const barbero = await requireBarbero(req, res)
+      if (!barbero) return
+
+      const fecha = hoyColombia()
+
+      const proxima = await sql`
+        SELECT
+          c.id,
+          to_char(c.hora, 'HH24:MI') AS hora,
+          cl.nombre AS cliente_nombre,
+          cl.telefono AS cliente_telefono
+        FROM citas c
+        JOIN clientes cl ON cl.id = c.cliente_id
+        WHERE c.barbero_id = ${barbero.id}
+          AND c.fecha = ${fecha}
+          AND c.tipo = 'agendada'
+          AND c.estado = 'confirmada'
+        ORDER BY c.hora ASC
+        LIMIT 1
+      `
+
+      if (proxima.length === 0) {
+        return res.status(200).json({ mensaje: "No hay próximas citas por avisar" })
+      }
+
+      const cita = proxima[0]
+      const notif = await sql`
+        INSERT INTO notificaciones (cita_id, tipo)
+        VALUES (${cita.id}, 'aviso_proximidad')
+        RETURNING id
+      `
+
+      return res.status(200).json({
+        cita: {
+          id: cita.id,
+          hora: cita.hora,
+          cliente_nombre: cita.cliente_nombre,
+          cliente_telefono: cita.cliente_telefono,
+        },
+        notificacion_id: notif[0].id,
+      })
+    }
+
+    // ---- GET: estado de un aviso (para hacer polling mientras el barbero espera respuesta) ----
+    if (req.method === "GET" && accion === "estado-aviso") {
+      const notificacion_id = req.query.notificacion_id
+      if (!notificacion_id) return res.status(400).json({ error: "Falta notificacion_id" })
+
+      const filas = await sql`SELECT respuesta FROM notificaciones WHERE id = ${notificacion_id}`
+      if (filas.length === 0) return res.status(404).json({ error: "No encontrado" })
+      return res.status(200).json({ respuesta: filas[0].respuesta })
     }
 
     // ---- GET: disponibilidad de horarios ----
@@ -125,7 +181,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ disponibles })
     }
 
-    // ---- GET: citas del día (admin) ----
+    // ---- GET: citas del día (admin: todas; barbero: se filtra en el frontend por su id) ----
     if (req.method === "GET" && accion === "dia") {
       const fecha = req.query.fecha
       if (!fecha) {
@@ -182,8 +238,11 @@ export default async function handler(req, res) {
       return res.status(201).json({ cita: nueva[0] })
     }
 
-    // ---- POST: registrar walk-in ----
+    // ---- POST: registrar walk-in (solo el barbero dueño de la sesión, para sí mismo) ----
     if (req.method === "POST" && accion === "walkin") {
+      const barbero = await requireBarbero(req, res)
+      if (!barbero) return
+
       const raw = await leerBody(req)
       let body
       try {
@@ -191,10 +250,11 @@ export default async function handler(req, res) {
       } catch {
         return res.status(400).json({ error: "JSON inválido" })
       }
-      const { barbero_id, fecha, hora, nombre, telefono } = body
-      if (!barbero_id || !fecha || !hora) {
-        return res.status(400).json({ error: "Faltan barbero_id, fecha u hora" })
+      const { fecha, hora, nombre, telefono } = body
+      if (!fecha || !hora) {
+        return res.status(400).json({ error: "Faltan fecha u hora" })
       }
+      const barbero_id = barbero.id // ignoramos cualquier barbero_id que venga del cliente
 
       let cliente_id = null
       if (nombre && nombre.trim()) {

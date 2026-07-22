@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Scissors } from 'lucide-react'
+import { Scissors, Calendar } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { hoyColombia } from '../lib/fechas.js'
 import { pedirPermisoNotificaciones, mostrarNotificacion } from '../lib/notificaciones.js'
@@ -220,20 +220,32 @@ function Citas() {
                 : 'border-gray-300 bg-white text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100'
             }`}
           >
-            <Scissors size={22} className="mx-auto mb-1" />
-            <div className="text-sm font-medium">{b.nombre}</div>
+            <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mx-auto mb-1 overflow-hidden">
+              {b.foto ? (
+                <img src={b.foto} alt={b.alias || b.nombre} className="w-full h-full object-cover" />
+              ) : (
+                <Scissors size={18} />
+              )}
+            </div>
+            <div className="text-sm font-medium">{b.alias || b.nombre}</div>
           </button>
         ))}
       </div>
 
       <label className="block text-sm font-medium mb-2">2. Elige la fecha</label>
-      <input
-        type="date"
-        min={hoy}
-        value={fecha}
-        onChange={(e) => setFecha(e.target.value)}
-        className="w-full border rounded-lg px-3 py-2 mb-5 bg-white text-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-900"
-      />
+      <div className="relative mb-5">
+        <Calendar
+          size={18}
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500"
+        />
+        <input
+          type="date"
+          min={hoy}
+          value={fecha}
+          onChange={(e) => setFecha(e.target.value)}
+          className="w-full border rounded-lg pl-10 pr-3 py-2 bg-white text-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-900"
+        />
+      </div>
 
       {barberoSel && fecha && (
         <>
