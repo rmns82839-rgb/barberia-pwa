@@ -171,7 +171,7 @@ function Home() {
                   )}
                 </div>
                 <h3 className="font-semibold">{barbero.alias || barbero.nombre}</h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 min-h-[1rem]">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 min-h-[1rem] w-full truncate">
                   {barbero.especialidad || '\u00A0'}
                 </p>
                 <span
