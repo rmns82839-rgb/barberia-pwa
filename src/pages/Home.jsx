@@ -37,7 +37,7 @@ function SelectorEstrellas({ valor, onChange }) {
 }
 
 function Home() {
-  const { cliente } = useAuth()
+  const { cliente, cargando: cargandoAuth } = useAuth()
   const navigate = useNavigate()
   const [barberos, setBarberos] = useState([])
   const [ratings, setRatings] = useState({})
@@ -97,8 +97,9 @@ function Home() {
   }
 
   const abrirModalResena = (barbero_id) => {
+    if (cargandoAuth) return
     if (!cliente) {
-      toast.info('Inicia sesión para dejar una reseña')
+      toast.info('Inicia sesión (o crea tu cuenta) para dejar una reseña')
       navigate('/login')
       return
     }
@@ -137,33 +138,31 @@ function Home() {
 
   return (
     <div className="p-4 sm:p-6 max-w-3xl mx-auto">
-      <div className="flex items-center gap-3 mb-2">
+      <div className="flex flex-col items-center text-center mb-4">
         {negocio?.logo_url && (
           <img
             src={negocio.logo_url}
             alt={negocio.nombre}
-            className="w-12 h-12 rounded-full object-cover shrink-0"
+            className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover shadow-md mb-3"
           />
         )}
-        <div>
-          <h1 className="text-2xl font-bold">
-            Bienvenido a {negocio?.nombre || 'la Barbería'}
-          </h1>
-          {negocio?.eslogan && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 italic">{negocio.eslogan}</p>
-          )}
-        </div>
+        <h1 className="text-2xl font-bold">
+          Bienvenido a {negocio?.nombre || 'la Barbería'}
+        </h1>
+        {negocio?.eslogan && (
+          <p className="text-sm text-gray-500 dark:text-gray-400 italic mt-1">{negocio.eslogan}</p>
+        )}
+        {negocio?.direccion && (
+          <p className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 mt-2">
+            <MapPin size={13} />
+            {negocio.direccion}
+          </p>
+        )}
       </div>
 
-      <p className="text-gray-600 dark:text-gray-400 mb-1">
+      <p className="text-gray-600 dark:text-gray-400 text-center mb-4">
         Agenda tu cita, revisa el catálogo de productos y más.
       </p>
-      {negocio?.direccion && (
-        <p className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 mb-4">
-          <MapPin size={13} />
-          {negocio.direccion}
-        </p>
-      )}
 
       <button
         onClick={() => navigate('/login')}
@@ -227,7 +226,7 @@ function Home() {
                   <p className="mt-1.5 text-xs text-gray-400 dark:text-gray-500">Sin reseñas todavía</p>
                 )}
 
-                <div className="grid grid-cols-3 gap-1.5 w-full mt-auto pt-2.5">
+                <div className="grid grid-cols-2 gap-1.5 w-full mt-auto pt-2.5">
                   <button
                     onClick={() => abrirGaleria(barbero.id)}
                     className="flex flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-medium bg-gray-900 dark:bg-gray-700 text-white transition active:scale-95"
@@ -243,33 +242,25 @@ function Home() {
                     <MessageCircle size={14} />
                     <span>Reseñas</span>
                   </button>
+                </div>
 
+                {barbero.whatsapp && (
                   <button
-                    onClick={() => {
-                      if (!barbero.whatsapp) {
-                        toast.info('Este barbero no ha configurado su WhatsApp todavía')
-                        return
-                      }
-                      window.open(`https://wa.me/57${barbero.whatsapp}`, '_blank')
-                    }}
-                    className={`flex flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-medium transition active:scale-95 ${
-                      barbero.whatsapp
-                        ? 'bg-green-600 text-white'
-                        : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500'
-                    }`}
+                    onClick={() => window.open(`https://wa.me/57${barbero.whatsapp}`, '_blank')}
+                    className="flex items-center justify-center gap-1.5 w-full mt-1.5 rounded-lg px-2 py-1.5 text-[10px] font-medium bg-green-600 text-white transition active:scale-95"
                   >
                     <IconoWhatsApp size={14} />
                     <span>WhatsApp</span>
                   </button>
+                )}
 
-                  <button
-                    onClick={() => abrirModalResena(barbero.id)}
-                    className="col-span-3 flex flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-medium bg-gradient-to-r from-amber-500 to-red-700 text-white transition active:scale-95"
-                  >
-                    <MessageSquarePlus size={14} />
-                    <span>Dejar reseña</span>
-                  </button>
-                </div>
+                <button
+                  onClick={() => abrirModalResena(barbero.id)}
+                  className="w-full mt-1.5 flex flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-medium bg-gradient-to-r from-amber-500 to-red-700 text-white transition active:scale-95"
+                >
+                  <MessageSquarePlus size={14} />
+                  <span>Dejar reseña</span>
+                </button>
               </div>
             )
           })}

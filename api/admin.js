@@ -300,7 +300,7 @@ export default async function handler(req, res) {
     // 12. CATEGORÍAS
     // =========================================
     if (action === 'categorias' && req.method === 'GET') {
-      const categorias = await sql`SELECT id, nombre, orden FROM categorias ORDER BY orden, nombre`
+      const categorias = await sql`SELECT id, nombre, orden, foto_url, descripcion FROM categorias ORDER BY orden, nombre`
       return responseSuccess(res, { categorias })
     }
 
@@ -309,16 +309,39 @@ export default async function handler(req, res) {
       const data = parseJSON(body)
       if (!data) return responseError(res, 'JSON inválido')
 
-      const { nombre } = data
+      const { nombre, foto_url, descripcion } = data
       if (!nombre || !nombre.trim()) return responseError(res, 'Falta el nombre de la categoría')
 
       const maxOrden = await sql`SELECT COALESCE(MAX(orden), 0) AS max FROM categorias`
       const nueva = await sql`
-        INSERT INTO categorias (nombre, orden)
-        VALUES (${nombre.trim()}, ${Number(maxOrden[0].max) + 1})
-        RETURNING id, nombre, orden
+        INSERT INTO categorias (nombre, orden, foto_url, descripcion)
+        VALUES (${nombre.trim()}, ${Number(maxOrden[0].max) + 1}, ${foto_url || null}, ${descripcion || null})
+        RETURNING id, nombre, orden, foto_url, descripcion
       `
       return responseSuccess(res, { categoria: nueva[0] }, 201)
+    }
+
+    if (action === 'categorias' && req.method === 'PUT') {
+      const body = await leerBody(req)
+      const data = parseJSON(body)
+      if (!data) return responseError(res, 'JSON inválido')
+
+      const { id, nombre, foto_url, descripcion } = data
+      if (!id) return responseError(res, 'Falta id')
+
+      const actual = await sql`SELECT nombre, foto_url, descripcion FROM categorias WHERE id = ${id}`
+      if (actual.length === 0) return responseError(res, 'Categoría no encontrada', 404)
+      const base = actual[0]
+
+      const editada = await sql`
+        UPDATE categorias
+        SET nombre = ${nombre !== undefined ? nombre.trim() : base.nombre},
+            foto_url = ${foto_url !== undefined ? (foto_url || null) : base.foto_url},
+            descripcion = ${descripcion !== undefined ? (descripcion || null) : base.descripcion}
+        WHERE id = ${id}
+        RETURNING id, nombre, orden, foto_url, descripcion
+      `
+      return responseSuccess(res, { categoria: editada[0] })
     }
 
     if (action === 'categorias' && req.method === 'DELETE') {

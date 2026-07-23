@@ -13,7 +13,7 @@ export default async function handler(req, res) {
 
     // ---- Lista de categorías (para las tarjetas del catálogo) ----
     if (req.query.categorias) {
-      const categorias = await sql`SELECT id, nombre, orden FROM categorias ORDER BY orden, nombre`
+      const categorias = await sql`SELECT id, nombre, orden, foto_url, descripcion FROM categorias ORDER BY orden, nombre`
       return res.status(200).json({ categorias })
     }
 

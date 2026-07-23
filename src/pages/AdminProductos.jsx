@@ -22,8 +22,13 @@ function AdminProductos() {
   const [guardando, setGuardando] = useState(false)
   const [aBorrar, setABorrar] = useState(null)
 
-  const [nuevaCategoria, setNuevaCategoria] = useState('')
-  const [creandoCategoria, setCreandoCategoria] = useState(false)
+  const [modalCategoria, setModalCategoria] = useState(false)
+  const [categoriaEditandoId, setCategoriaEditandoId] = useState(null)
+  const [catNombre, setCatNombre] = useState('')
+  const [catDescripcion, setCatDescripcion] = useState('')
+  const [catFotoUrl, setCatFotoUrl] = useState('')
+  const [subiendoFotoCategoria, setSubiendoFotoCategoria] = useState(false)
+  const [guardandoCategoria, setGuardandoCategoria] = useState(false)
   const [categoriaABorrar, setCategoriaABorrar] = useState(null)
 
   const [imagenesExtra, setImagenesExtra] = useState([])
@@ -65,24 +70,69 @@ function AdminProductos() {
     }
   }, [admin])
 
-  const crearCategoria = async () => {
-    if (!nuevaCategoria.trim()) return
-    setCreandoCategoria(true)
+  const abrirNuevaCategoria = () => {
+    setCategoriaEditandoId(null)
+    setCatNombre('')
+    setCatDescripcion('')
+    setCatFotoUrl('')
+    setModalCategoria(true)
+  }
+
+  const abrirEditarCategoria = (cat) => {
+    setCategoriaEditandoId(cat.id)
+    setCatNombre(cat.nombre)
+    setCatDescripcion(cat.descripcion || '')
+    setCatFotoUrl(cat.foto_url || '')
+    setModalCategoria(true)
+  }
+
+  const subirFotoCategoria = async (e) => {
+    const archivo = e.target.files[0]
+    if (!archivo) return
+    setSubiendoFotoCategoria(true)
     try {
+      const res = await fetch(
+        `/api/subir-imagen?filename=${encodeURIComponent(archivo.name)}`,
+        { method: 'POST', body: archivo }
+      )
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setCatFotoUrl(data.url)
+      toast.success('Foto subida')
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      setSubiendoFotoCategoria(false)
+    }
+  }
+
+  const guardarCategoria = async () => {
+    if (!catNombre.trim()) {
+      toast.error('El nombre es obligatorio')
+      return
+    }
+    setGuardandoCategoria(true)
+    try {
+      const esEdicion = categoriaEditandoId != null
       const res = await fetch('/api/admin?action=categorias', {
-        method: 'POST',
+        method: esEdicion ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre: nuevaCategoria.trim() }),
+        body: JSON.stringify({
+          id: categoriaEditandoId,
+          nombre: catNombre.trim(),
+          descripcion: catDescripcion.trim(),
+          foto_url: catFotoUrl,
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      toast.success('Categoría creada')
-      setNuevaCategoria('')
+      toast.success(esEdicion ? 'Categoría actualizada' : 'Categoría creada')
+      setModalCategoria(false)
       cargarCategorias()
     } catch (err) {
       toast.error(err.message)
     } finally {
-      setCreandoCategoria(false)
+      setGuardandoCategoria(false)
     }
   }
 
@@ -274,42 +324,105 @@ function AdminProductos() {
 
       {/* ---- Categorías ---- */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-4 mb-6">
-        <h2 className="text-sm font-semibold flex items-center gap-1 mb-3">
-          <Tag size={14} /> Categorías
-        </h2>
-        <div className="flex flex-wrap gap-2 mb-3">
-          {categorias.map((cat) => (
-            <span
-              key={cat.id}
-              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
-            >
-              {cat.nombre}
-              <button onClick={() => setCategoriaABorrar(cat)} aria-label="Eliminar categoría">
-                <X size={12} />
-              </button>
-            </span>
-          ))}
-          {categorias.length === 0 && (
-            <span className="text-xs text-gray-400 dark:text-gray-500">Aún no hay categorías.</span>
-          )}
-        </div>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={nuevaCategoria}
-            onChange={(e) => setNuevaCategoria(e.target.value)}
-            placeholder="Nueva categoría (ej: Gorras)"
-            className="flex-1 border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
-          />
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold flex items-center gap-1">
+            <Tag size={14} /> Categorías
+          </h2>
           <button
-            onClick={crearCategoria}
-            disabled={creandoCategoria}
-            className="flex items-center gap-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg px-3 py-2 text-sm font-medium transition active:scale-95 disabled:opacity-50"
+            onClick={abrirNuevaCategoria}
+            className="flex items-center gap-1 text-xs font-medium bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-full px-3 py-1.5 transition active:scale-95"
           >
-            {creandoCategoria ? <CargandoTijera texto={null} size={14} className="text-white dark:text-gray-900" /> : <Plus size={14} />}
+            <Plus size={13} /> Nueva
           </button>
         </div>
+
+        {categorias.length === 0 && (
+          <p className="text-xs text-gray-400 dark:text-gray-500">Aún no hay categorías.</p>
+        )}
+
+        <div className="grid grid-cols-3 gap-2">
+          {categorias.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => abrirEditarCategoria(cat)}
+              className="relative bg-gray-50 dark:bg-gray-700 rounded-lg p-2 flex flex-col items-center text-center transition active:scale-95"
+            >
+              <span
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setCategoriaABorrar(cat)
+                }}
+                aria-label="Eliminar categoría"
+                className="absolute top-1 right-1 flex items-center justify-center w-5 h-5 rounded-full bg-red-100 text-red-700"
+              >
+                <X size={11} />
+              </span>
+              <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-600 overflow-hidden flex items-center justify-center mb-1">
+                {cat.foto_url ? (
+                  <img src={cat.foto_url} alt={cat.nombre} className="w-full h-full object-cover" />
+                ) : (
+                  <Tag size={16} className="text-gray-400" />
+                )}
+              </div>
+              <span className="text-xs font-medium truncate w-full">{cat.nombre}</span>
+            </button>
+          ))}
+        </div>
       </div>
+
+      <Modal
+        open={modalCategoria}
+        onClose={() => setModalCategoria(false)}
+        title={categoriaEditandoId ? 'Editar categoría' : 'Nueva categoría'}
+      >
+        <div className="space-y-2">
+          <input
+            type="text"
+            value={catNombre}
+            onChange={(e) => setCatNombre(e.target.value)}
+            placeholder="Nombre (ej: Gorras)"
+            className="w-full border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
+          />
+          <textarea
+            value={catDescripcion}
+            onChange={(e) => setCatDescripcion(e.target.value)}
+            placeholder="Descripción breve (opcional)"
+            rows={2}
+            className="w-full border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm resize-none"
+          />
+          <div>
+            <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Foto (opcional)</label>
+            {catFotoUrl && (
+              <img src={catFotoUrl} alt="Vista previa" className="w-20 h-20 object-cover rounded-lg mb-2" />
+            )}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={subirFotoCategoria}
+              disabled={subiendoFotoCategoria}
+              className="text-xs w-full"
+            />
+            {subiendoFotoCategoria && (
+              <div className="mt-1">
+                <CargandoTijera texto="Subiendo..." size={12} />
+              </div>
+            )}
+          </div>
+          <button
+            onClick={guardarCategoria}
+            disabled={guardandoCategoria}
+            className="w-full flex items-center justify-center gap-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg px-3 py-2 text-sm font-medium transition active:scale-95 disabled:opacity-50"
+          >
+            {guardandoCategoria ? (
+              <CargandoTijera texto="Guardando..." size={14} className="text-white dark:text-gray-900" />
+            ) : categoriaEditandoId ? (
+              'Guardar cambios'
+            ) : (
+              'Crear categoría'
+            )}
+          </button>
+        </div>
+      </Modal>
 
       {/* ---- Formulario de producto ---- */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-4 mb-6">

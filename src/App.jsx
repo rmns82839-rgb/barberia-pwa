@@ -17,6 +17,7 @@ import AdminHorarios from './pages/AdminHorarios.jsx'
 import AdminBarberos from './pages/AdminBarberos.jsx'
 import AdminNegocio from './pages/AdminNegocio.jsx'
 import CatalogoCategoria from './pages/CatalogoCategoria.jsx'
+import BarberoPerfil from './pages/BarberoPerfil.jsx'
 import Registro from './pages/Registro.jsx'
 import { obtenerTema, aplicarTema } from './lib/tema.js'
 
@@ -53,6 +54,7 @@ function App() {
           <Route path="/admin-barberos" element={<PaginaAnimada><AdminBarberos /></PaginaAnimada>} />
           <Route path="/admin-negocio" element={<PaginaAnimada><AdminNegocio /></PaginaAnimada>} />
           <Route path="/catalogo/:categoriaId" element={<PaginaAnimada><CatalogoCategoria /></PaginaAnimada>} />
+          <Route path="/barbero-perfil" element={<PaginaAnimada><BarberoPerfil /></PaginaAnimada>} />
           <Route path="/registro" element={<PaginaAnimada><Registro /></PaginaAnimada>} />
         </Routes>
       </AnimatePresence>

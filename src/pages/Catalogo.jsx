@@ -32,7 +32,7 @@ function Catalogo() {
       {cargando && (
         <div className="grid grid-cols-2 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-28 rounded-xl skeleton-shimmer" />
+            <div key={i} className="h-32 rounded-xl skeleton-shimmer" />
           ))}
         </div>
       )}
@@ -49,13 +49,22 @@ function Catalogo() {
             <button
               key={cat.id}
               onClick={() => navigate(`/catalogo/${cat.id}`)}
-              className="bg-white dark:bg-gray-800 rounded-xl shadow p-5 flex flex-col items-center justify-center gap-2 transition active:scale-95 h-28"
+              className="bg-white dark:bg-gray-800 rounded-xl shadow p-4 flex flex-col items-center justify-center gap-2 transition active:scale-95 h-32 text-center"
             >
-              <SprayCan size={28} className="text-amber-600" />
+              <div className="w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-900/30 overflow-hidden flex items-center justify-center">
+                {cat.foto_url ? (
+                  <img src={cat.foto_url} alt={cat.nombre} className="w-full h-full object-cover" />
+                ) : (
+                  <SprayCan size={22} className="text-amber-600" />
+                )}
+              </div>
               <div className="flex items-center gap-1 font-semibold text-sm">
                 {cat.nombre}
                 <ChevronRight size={14} className="text-gray-400" />
               </div>
+              {cat.descripcion && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate w-full">{cat.descripcion}</p>
+              )}
             </button>
           ))}
         </div>
