@@ -64,12 +64,12 @@ export default async function handler(req, res) {
       } catch {
         return res.status(400).json({ error: "JSON inválido" })
       }
-      const { cita_id } = data
+      const { cita_id, motivo } = data
       if (!cita_id) return res.status(400).json({ error: "Falta cita_id" })
 
       const result = await sql`
         UPDATE citas
-        SET estado = 'cancelada'
+        SET estado = 'cancelada', motivo_cancelacion = ${motivo && motivo.trim() ? motivo.trim() : null}
         WHERE id = ${cita_id} AND cliente_id = ${cliente.id}
         RETURNING id
       `

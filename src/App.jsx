@@ -15,6 +15,7 @@ import BarberoGaleria from './pages/BarberoGaleria.jsx'
 import MisCitas from './pages/MisCitas.jsx'
 import AdminHorarios from './pages/AdminHorarios.jsx'
 import AdminBarberos from './pages/AdminBarberos.jsx'
+import Registro from './pages/Registro.jsx'
 import { obtenerTema, aplicarTema } from './lib/tema.js'
 
 const variantesPagina = {
@@ -48,6 +49,7 @@ function App() {
           <Route path="/mis-citas" element={<PaginaAnimada><MisCitas /></PaginaAnimada>} />
           <Route path="/admin-horarios" element={<PaginaAnimada><AdminHorarios /></PaginaAnimada>} />
           <Route path="/admin-barberos" element={<PaginaAnimada><AdminBarberos /></PaginaAnimada>} />
+          <Route path="/registro" element={<PaginaAnimada><Registro /></PaginaAnimada>} />
         </Routes>
       </AnimatePresence>
     </div>

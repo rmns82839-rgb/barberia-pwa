@@ -76,8 +76,34 @@ export default async function handler(req, res) {
     }
   }
 
-  // CLIENTE LOGIN
+  // CLIENTE LOGIN (solo si ya tiene cuenta)
   if (action === 'cliente-login' && req.method === 'POST') {
+    try {
+      const body = await leerBody(req)
+      const data = parseJSON(body)
+      if (!data) return responseError(res, 'JSON inválido')
+
+      const { telefono } = data
+      if (!telefono) return responseError(res, 'El teléfono es obligatorio')
+
+      const cliente = await sql`
+        SELECT id, nombre, telefono, puntos FROM clientes WHERE telefono = ${telefono}
+      `
+      if (cliente.length === 0) {
+        return responseError(res, 'No encontramos una cuenta con ese teléfono. ¿Ya te registraste?', 404)
+      }
+
+      const token = generarToken({ id: cliente[0].id, nombre: cliente[0].nombre }, '30d')
+      ponerCookieSesion(res, 'cliente_session', token, 60 * 60 * 24 * 30)
+      return responseSuccess(res, { cliente: cliente[0] })
+    } catch (error) {
+      console.error('ERROR en cliente-login:', error.message)
+      return responseError(res, error.message, 500)
+    }
+  }
+
+  // CLIENTE REGISTRO (crea cuenta nueva)
+  if (action === 'cliente-registro' && req.method === 'POST') {
     try {
       const body = await leerBody(req)
       const data = parseJSON(body)
@@ -86,25 +112,22 @@ export default async function handler(req, res) {
       const { nombre, telefono } = data
       if (!nombre || !telefono) return responseError(res, 'Nombre y teléfono son obligatorios')
 
-      let cliente = await sql`
-        SELECT id, nombre, telefono, puntos FROM clientes WHERE telefono = ${telefono}
-      `
-      let nuevo = false
-      if (cliente.length === 0) {
-        const nuevoCliente = await sql`
-          INSERT INTO clientes (nombre, telefono, puntos)
-          VALUES (${nombre}, ${telefono}, 0)
-          RETURNING id, nombre, telefono, puntos
-        `
-        cliente = nuevoCliente
-        nuevo = true
+      const existente = await sql`SELECT id FROM clientes WHERE telefono = ${telefono}`
+      if (existente.length > 0) {
+        return responseError(res, 'Ya existe una cuenta con ese teléfono. Inicia sesión en vez de registrarte.', 409)
       }
 
-      const token = generarToken({ id: cliente[0].id, nombre: cliente[0].nombre }, '30d')
+      const nuevoCliente = await sql`
+        INSERT INTO clientes (nombre, telefono, puntos)
+        VALUES (${nombre}, ${telefono}, 0)
+        RETURNING id, nombre, telefono, puntos
+      `
+
+      const token = generarToken({ id: nuevoCliente[0].id, nombre: nuevoCliente[0].nombre }, '30d')
       ponerCookieSesion(res, 'cliente_session', token, 60 * 60 * 24 * 30)
-      return responseSuccess(res, { cliente: cliente[0], nuevo })
+      return responseSuccess(res, { cliente: nuevoCliente[0] }, 201)
     } catch (error) {
-      console.error('ERROR en cliente-login:', error.message)
+      console.error('ERROR en cliente-registro:', error.message)
       return responseError(res, error.message, 500)
     }
   }

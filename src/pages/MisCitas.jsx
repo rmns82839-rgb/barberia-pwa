@@ -12,6 +12,7 @@ function MisCitas() {
   const [citas, setCitas] = useState([])
   const [cargando, setCargando] = useState(true)
   const [aCancelar, setACancelar] = useState(null)
+  const [motivo, setMotivo] = useState('')
   const [cancelando, setCancelando] = useState(false)
 
   useEffect(() => {
@@ -40,20 +41,28 @@ function MisCitas() {
     if (cliente) cargarCitas()
   }, [cliente])
 
-  const cancelarCita = async () => {
+  const cancelarCita = async (reagendar = false) => {
     if (!aCancelar) return
     setCancelando(true)
     try {
       const res = await fetch('/api/citas?accion=cancelar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cita_id: aCancelar }),
+        body: JSON.stringify({
+          cita_id: aCancelar,
+          motivo: reagendar ? (motivo.trim() || 'Cliente prefirió reagendar') : motivo.trim(),
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      toast.success('Cita cancelada')
+      toast.success(reagendar ? 'Cita cancelada, vamos a reagendar' : 'Cita cancelada')
       setACancelar(null)
-      cargarCitas()
+      setMotivo('')
+      if (reagendar) {
+        navigate('/citas')
+      } else {
+        cargarCitas()
+      }
     } catch (err) {
       toast.error(err.message)
     } finally {
@@ -123,24 +132,40 @@ function MisCitas() {
         </div>
       )}
 
-      <Modal open={aCancelar != null} onClose={() => setACancelar(null)} title="Cancelar cita">
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+      <Modal open={aCancelar != null} onClose={() => { setACancelar(null); setMotivo('') }} title="Cancelar cita">
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
           ¿Seguro que quieres cancelar esta cita? Esta acción no se puede deshacer.
         </p>
-        <div className="grid grid-cols-2 gap-2">
+        <textarea
+          placeholder="Motivo de la cancelación (opcional)"
+          value={motivo}
+          onChange={(e) => setMotivo(e.target.value)}
+          rows={2}
+          className="w-full border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm resize-none mb-3"
+        />
+        <div className="space-y-2">
           <button
-            onClick={cancelarCita}
+            onClick={() => cancelarCita(true)}
             disabled={cancelando}
-            className="flex items-center justify-center gap-2 bg-red-600 text-white rounded-lg px-3 py-2 text-sm font-medium transition active:scale-95 disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white rounded-lg px-3 py-2 text-sm font-medium transition active:scale-95 disabled:opacity-50"
           >
-            {cancelando ? <CargandoTijera texto="Cancelando..." size={14} className="text-white" /> : 'Sí, cancelar'}
+            {cancelando ? <CargandoTijera texto="Procesando..." size={14} className="text-white" /> : 'Cancelar y reagendar'}
           </button>
-          <button
-            onClick={() => setACancelar(null)}
-            className="border dark:border-gray-700 rounded-lg px-3 py-2 text-sm transition active:scale-95"
-          >
-            Volver
-          </button>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => cancelarCita(false)}
+              disabled={cancelando}
+              className="flex items-center justify-center gap-2 bg-red-600 text-white rounded-lg px-3 py-2 text-sm font-medium transition active:scale-95 disabled:opacity-50"
+            >
+              {cancelando ? <CargandoTijera texto="Cancelando..." size={14} className="text-white" /> : 'Solo cancelar'}
+            </button>
+            <button
+              onClick={() => { setACancelar(null); setMotivo('') }}
+              className="border dark:border-gray-700 rounded-lg px-3 py-2 text-sm transition active:scale-95"
+            >
+              Volver
+            </button>
+          </div>
         </div>
       </Modal>
     </div>

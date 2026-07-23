@@ -4,7 +4,8 @@ import { toast } from 'sonner'
 import { useAuth } from '../context/AuthContext'
 import CargandoTijera from '../components/CargandoTijera.jsx'
 
-function Login() {
+function Registro() {
+  const [nombre, setNombre] = useState('')
   const [telefono, setTelefono] = useState('')
   const [cargando, setCargando] = useState(false)
   const navigate = useNavigate()
@@ -13,21 +14,21 @@ function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    if (!telefono.trim()) {
-      toast.error('Ingresa tu número de WhatsApp')
+    if (!nombre.trim() || !telefono.trim()) {
+      toast.error('Por favor ingresa tu nombre y número de WhatsApp')
       return
     }
 
     setCargando(true)
     try {
-      const res = await fetch('/api/auth?action=cliente-login', {
+      const res = await fetch('/api/auth?action=cliente-registro', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ telefono: telefono.trim() }),
+        body: JSON.stringify({ nombre: nombre.trim(), telefono: telefono.trim() }),
       })
       const data = await res.json()
 
-      if (!res.ok) throw new Error(data.error || 'Error al iniciar sesión')
+      if (!res.ok) throw new Error(data.error || 'Error al crear la cuenta')
 
       loginCliente(data.cliente)
       toast.success(`¡Bienvenido, ${data.cliente.nombre}!`)
@@ -41,12 +42,19 @@ function Login() {
 
   return (
     <div className="p-6 max-w-sm mx-auto">
-      <h1 className="text-xl font-bold mb-2">Bienvenido de nuevo</h1>
+      <h1 className="text-xl font-bold mb-2">Crea tu cuenta</h1>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-        Ingresa tu número de WhatsApp para continuar.
+        Solo necesitamos tu nombre y WhatsApp para agendar tus citas.
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-3">
+        <input
+          type="text"
+          placeholder="Tu nombre"
+          value={nombre}
+          onChange={(e) => setNombre(e.target.value)}
+          className="w-full border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-900"
+        />
         <input
           type="tel"
           placeholder="Número de WhatsApp"
@@ -60,32 +68,23 @@ function Login() {
           disabled={cargando}
           className="w-full flex items-center justify-center gap-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg px-3 py-2.5 font-medium transition active:scale-95 disabled:opacity-50 disabled:active:scale-100"
         >
-          {cargando ? <CargandoTijera texto="Entrando..." size={16} className="text-white dark:text-gray-900" /> : 'Ingresar'}
+          {cargando ? <CargandoTijera texto="Creando cuenta..." size={16} className="text-white dark:text-gray-900" /> : 'Crear cuenta'}
         </button>
       </form>
 
       <div className="mt-6 border-t dark:border-gray-700 pt-4 text-center">
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          ¿Primera vez aquí?{' '}
+          ¿Ya tienes cuenta?{' '}
           <button
-            onClick={() => navigate('/registro')}
+            onClick={() => navigate('/login')}
             className="text-blue-600 dark:text-blue-400 font-medium"
           >
-            Crea tu cuenta
+            Inicia sesión
           </button>
         </p>
-      </div>
-
-      <div className="mt-8 text-center">
-        <button
-          onClick={() => navigate('/barbero-login')}
-          className="text-xs text-gray-300 dark:text-gray-600 hover:text-gray-400 dark:hover:text-gray-500 transition"
-        >
-          ¿Eres barbero?
-        </button>
       </div>
     </div>
   )
 }
 
-export default Login
+export default Registro

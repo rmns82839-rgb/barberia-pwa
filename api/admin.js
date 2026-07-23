@@ -1,5 +1,12 @@
 import { getDb, leerBody, parseJSON, responseError, responseSuccess } from './_db.js'
 import { requireAdmin } from './_middleware.js'
+import { scryptSync, randomBytes } from 'crypto'
+
+function generarHash(password) {
+  const salt = randomBytes(16).toString('hex')
+  const hash = scryptSync(password, salt, 64).toString('hex')
+  return `${salt}:${hash}`
+}
 
 export default async function handler(req, res) {
   const admin = await requireAdmin(req, res)
@@ -207,7 +214,7 @@ export default async function handler(req, res) {
     if (action === 'barberos-stats' && req.method === 'GET') {
       const barberos = await sql`
         SELECT
-          b.id, b.nombre, b.alias, b.estado,
+          b.id, b.nombre, b.alias, b.estado, b.usuario,
           COALESCE(r.promedio, 0) AS promedio,
           COALESCE(r.total, 0) AS total_resenas,
           COALESCE(c.atendidas, 0) AS atendidas
@@ -231,6 +238,60 @@ export default async function handler(req, res) {
           atendidas: Number(b.atendidas),
         })),
       })
+    }
+
+    // =========================================
+    // 10. CREAR NUEVO BARBERO
+    // =========================================
+    if (action === 'crear-barbero' && req.method === 'POST') {
+      const body = await leerBody(req)
+      const data = parseJSON(body)
+      if (!data) return responseError(res, 'JSON inválido')
+
+      const { nombre, usuario, password, especialidad } = data
+      if (!nombre || !usuario || !password) {
+        return responseError(res, 'Faltan nombre, usuario o contraseña')
+      }
+      if (password.length < 6) {
+        return responseError(res, 'La contraseña debe tener al menos 6 caracteres')
+      }
+
+      const existente = await sql`SELECT id FROM barberos WHERE usuario = ${usuario}`
+      if (existente.length > 0) {
+        return responseError(res, 'Ese usuario ya está en uso')
+      }
+
+      const hash = generarHash(password)
+      const nuevo = await sql`
+        INSERT INTO barberos (nombre, usuario, password_hash, especialidad, estado, activo)
+        VALUES (${nombre}, ${usuario}, ${hash}, ${especialidad || null}, 'disponible', true)
+        RETURNING id, nombre, usuario, especialidad, estado
+      `
+      return responseSuccess(res, { barbero: nuevo[0] }, 201)
+    }
+
+    // =========================================
+    // 11. RESETEAR CONTRASEÑA DE UN BARBERO (sin pedir la actual)
+    // =========================================
+    if (action === 'resetear-password-barbero' && req.method === 'POST') {
+      const body = await leerBody(req)
+      const data = parseJSON(body)
+      if (!data) return responseError(res, 'JSON inválido')
+
+      const { barbero_id, passwordNueva } = data
+      if (!barbero_id || !passwordNueva) {
+        return responseError(res, 'Faltan barbero_id o passwordNueva')
+      }
+      if (passwordNueva.length < 6) {
+        return responseError(res, 'La contraseña debe tener al menos 6 caracteres')
+      }
+
+      const hash = generarHash(passwordNueva)
+      const result = await sql`
+        UPDATE barberos SET password_hash = ${hash} WHERE id = ${barbero_id} RETURNING id
+      `
+      if (result.length === 0) return responseError(res, 'Barbero no encontrado', 404)
+      return responseSuccess(res, { ok: true })
     }
 
     return responseError(res, 'Acción no reconocida', 400)

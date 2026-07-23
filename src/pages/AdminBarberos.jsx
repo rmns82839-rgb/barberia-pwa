@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Star, ChevronDown, CheckCircle2 } from 'lucide-react'
+import { Star, ChevronDown, CheckCircle2, UserPlus, KeyRound } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import Modal from '../components/Modal.jsx'
+import CargandoTijera from '../components/CargandoTijera.jsx'
 
 function Estrellas({ valor, tamano = 14 }) {
   return (
@@ -26,14 +28,24 @@ function AdminBarberos() {
   const [expandido, setExpandido] = useState(null)
   const [resenasPorBarbero, setResenasPorBarbero] = useState({})
 
+  const [modalNuevo, setModalNuevo] = useState(false)
+  const [nuevoNombre, setNuevoNombre] = useState('')
+  const [nuevoUsuario, setNuevoUsuario] = useState('')
+  const [nuevoPassword, setNuevoPassword] = useState('')
+  const [nuevaEspecialidad, setNuevaEspecialidad] = useState('')
+  const [creando, setCreando] = useState(false)
+
+  const [modalReset, setModalReset] = useState(null)
+  const [passwordReset, setPasswordReset] = useState('')
+  const [reseteando, setReseteando] = useState(false)
+
   useEffect(() => {
     if (!admin) {
       navigate('/admin-login')
     }
   }, [admin, navigate])
 
-  useEffect(() => {
-    if (!admin) return
+  const cargarBarberos = () => {
     fetch('/api/admin?action=barberos-stats')
       .then((res) => res.json())
       .then((data) => {
@@ -45,6 +57,10 @@ function AdminBarberos() {
         toast.error(err.message)
         setCargando(false)
       })
+  }
+
+  useEffect(() => {
+    if (admin) cargarBarberos()
   }, [admin])
 
   const alternarExpandido = (barberoId) => {
@@ -63,13 +79,83 @@ function AdminBarberos() {
     }
   }
 
+  const crearBarbero = async () => {
+    if (!nuevoNombre.trim() || !nuevoUsuario.trim() || !nuevoPassword) {
+      toast.error('Nombre, usuario y contraseña son obligatorios')
+      return
+    }
+    if (nuevoPassword.length < 6) {
+      toast.error('La contraseña debe tener al menos 6 caracteres')
+      return
+    }
+    setCreando(true)
+    try {
+      const res = await fetch('/api/admin?action=crear-barbero', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: nuevoNombre.trim(),
+          usuario: nuevoUsuario.trim(),
+          password: nuevoPassword,
+          especialidad: nuevaEspecialidad.trim(),
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      toast.success(`Barbero "${data.barbero.nombre}" creado`)
+      setModalNuevo(false)
+      setNuevoNombre('')
+      setNuevoUsuario('')
+      setNuevoPassword('')
+      setNuevaEspecialidad('')
+      cargarBarberos()
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      setCreando(false)
+    }
+  }
+
+  const resetearPassword = async () => {
+    if (!passwordReset || passwordReset.length < 6) {
+      toast.error('La nueva contraseña debe tener al menos 6 caracteres')
+      return
+    }
+    setReseteando(true)
+    try {
+      const res = await fetch('/api/admin?action=resetear-password-barbero', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ barbero_id: modalReset, passwordNueva: passwordReset }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      toast.success('Contraseña actualizada')
+      setModalReset(null)
+      setPasswordReset('')
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      setReseteando(false)
+    }
+  }
+
   return (
     <div className="p-4 sm:p-6 max-w-2xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-wrap justify-between items-center gap-2 mb-6">
         <h1 className="text-xl font-bold">Desempeño de barberos</h1>
-        <button onClick={() => navigate('/admin')} className="text-sm text-gray-500 dark:text-gray-400 underline">
-          Volver al panel
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setModalNuevo(true)}
+            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 transition active:scale-95"
+          >
+            <UserPlus size={14} />
+            Nuevo barbero
+          </button>
+          <button onClick={() => navigate('/admin')} className="text-sm text-gray-500 dark:text-gray-400 underline">
+            Volver al panel
+          </button>
+        </div>
       </div>
 
       {cargando && (
@@ -87,12 +173,12 @@ function AdminBarberos() {
       <div className="space-y-3">
         {barberos.map((b) => (
           <div key={b.id} className="bg-white dark:bg-gray-800 rounded-xl shadow overflow-hidden">
-            <button
-              onClick={() => alternarExpandido(b.id)}
-              className="w-full flex items-center justify-between p-4 text-left"
-            >
-              <div>
+            <div className="flex items-center justify-between p-4">
+              <button onClick={() => alternarExpandido(b.id)} className="flex-1 text-left">
                 <div className="font-semibold text-sm">{b.alias || b.nombre}</div>
+                {b.usuario && (
+                  <div className="text-xs text-gray-400 dark:text-gray-500">usuario: {b.usuario}</div>
+                )}
                 <div className="flex items-center gap-2 mt-1">
                   {b.total_resenas > 0 ? (
                     <>
@@ -109,12 +195,23 @@ function AdminBarberos() {
                   <CheckCircle2 size={12} />
                   {b.atendidas} {b.atendidas === 1 ? 'cita atendida' : 'citas atendidas'} en total
                 </div>
+              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => setModalReset(b.id)}
+                  aria-label="Resetear contraseña"
+                  className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 transition active:scale-95"
+                >
+                  <KeyRound size={14} />
+                </button>
+                <button onClick={() => alternarExpandido(b.id)}>
+                  <ChevronDown
+                    size={18}
+                    className={`text-gray-400 transition-transform ${expandido === b.id ? 'rotate-180' : ''}`}
+                  />
+                </button>
               </div>
-              <ChevronDown
-                size={18}
-                className={`text-gray-400 transition-transform ${expandido === b.id ? 'rotate-180' : ''}`}
-              />
-            </button>
+            </div>
 
             {expandido === b.id && (
               <div className="border-t dark:border-gray-700 p-4">
@@ -143,6 +240,68 @@ function AdminBarberos() {
           </div>
         ))}
       </div>
+
+      <Modal open={modalNuevo} onClose={() => setModalNuevo(false)} title="Nuevo barbero">
+        <div className="space-y-2">
+          <input
+            type="text"
+            placeholder="Nombre completo"
+            value={nuevoNombre}
+            onChange={(e) => setNuevoNombre(e.target.value)}
+            className="w-full border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
+          />
+          <input
+            type="text"
+            placeholder="Usuario para iniciar sesión (ej: barbero3)"
+            value={nuevoUsuario}
+            onChange={(e) => setNuevoUsuario(e.target.value)}
+            className="w-full border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
+          />
+          <input
+            type="password"
+            placeholder="Contraseña (mín. 6 caracteres)"
+            value={nuevoPassword}
+            onChange={(e) => setNuevoPassword(e.target.value)}
+            className="w-full border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
+          />
+          <input
+            type="text"
+            placeholder="Especialidad (opcional)"
+            value={nuevaEspecialidad}
+            onChange={(e) => setNuevaEspecialidad(e.target.value)}
+            className="w-full border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
+          />
+          <button
+            onClick={crearBarbero}
+            disabled={creando}
+            className="w-full flex items-center justify-center gap-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg px-3 py-2 text-sm font-medium transition active:scale-95 disabled:opacity-50"
+          >
+            {creando ? <CargandoTijera texto="Creando..." size={14} className="text-white dark:text-gray-900" /> : 'Crear barbero'}
+          </button>
+        </div>
+      </Modal>
+
+      <Modal open={modalReset != null} onClose={() => setModalReset(null)} title="Resetear contraseña">
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          Define una nueva contraseña para este barbero (no necesitas saber la anterior).
+        </p>
+        <div className="space-y-2">
+          <input
+            type="password"
+            placeholder="Nueva contraseña (mín. 6 caracteres)"
+            value={passwordReset}
+            onChange={(e) => setPasswordReset(e.target.value)}
+            className="w-full border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
+          />
+          <button
+            onClick={resetearPassword}
+            disabled={reseteando}
+            className="w-full flex items-center justify-center gap-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg px-3 py-2 text-sm font-medium transition active:scale-95 disabled:opacity-50"
+          >
+            {reseteando ? <CargandoTijera texto="Guardando..." size={14} className="text-white dark:text-gray-900" /> : 'Actualizar contraseña'}
+          </button>
+        </div>
+      </Modal>
     </div>
   )
 }
