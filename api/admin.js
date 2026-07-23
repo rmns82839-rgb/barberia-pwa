@@ -201,6 +201,38 @@ export default async function handler(req, res) {
       return responseSuccess(res, { ok: true })
     }
 
+    // =========================================
+    // 9. ESTADÍSTICAS POR BARBERO (reseñas + desempeño)
+    // =========================================
+    if (action === 'barberos-stats' && req.method === 'GET') {
+      const barberos = await sql`
+        SELECT
+          b.id, b.nombre, b.alias, b.estado,
+          COALESCE(r.promedio, 0) AS promedio,
+          COALESCE(r.total, 0) AS total_resenas,
+          COALESCE(c.atendidas, 0) AS atendidas
+        FROM barberos b
+        LEFT JOIN (
+          SELECT barbero_id, ROUND(AVG(calificacion)::numeric, 1) AS promedio, COUNT(*) AS total
+          FROM resenas GROUP BY barbero_id
+        ) r ON r.barbero_id = b.id
+        LEFT JOIN (
+          SELECT barbero_id, COUNT(*) AS atendidas
+          FROM citas WHERE estado = 'atendida' GROUP BY barbero_id
+        ) c ON c.barbero_id = b.id
+        WHERE b.activo = true
+        ORDER BY b.id
+      `
+      return responseSuccess(res, {
+        barberos: barberos.map((b) => ({
+          ...b,
+          promedio: Number(b.promedio),
+          total_resenas: Number(b.total_resenas),
+          atendidas: Number(b.atendidas),
+        })),
+      })
+    }
+
     return responseError(res, 'Acción no reconocida', 400)
   } catch (error) {
     console.error('ERROR REAL:', error.message)

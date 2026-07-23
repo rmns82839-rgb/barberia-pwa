@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Package, Users, KeyRound, LogOut, Clock } from 'lucide-react'
+import { Package, Users, KeyRound, LogOut, Clock, BarChart3 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import Modal from '../components/Modal.jsx'
 import CargandoTijera from '../components/CargandoTijera.jsx'
@@ -111,6 +111,13 @@ function Admin() {
           >
             <Clock size={14} />
             Horarios
+          </button>
+          <button
+            onClick={() => navigate('/admin-barberos')}
+            className={`${chip} bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300`}
+          >
+            <BarChart3 size={14} />
+            Barberos
           </button>
           <button
             onClick={() => setModalCredenciales(true)}
