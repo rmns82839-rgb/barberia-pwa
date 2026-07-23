@@ -161,21 +161,21 @@ function Home() {
             return (
               <div
                 key={barbero.id}
-                className="bg-white dark:bg-gray-800 rounded-xl shadow p-4 flex flex-col items-center text-center h-full"
+                className="bg-white dark:bg-gray-800 rounded-xl shadow p-3 flex flex-col items-center text-center h-full"
               >
-                <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mb-3 overflow-hidden">
+                <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mb-2 overflow-hidden">
                   {barbero.foto ? (
                     <img src={barbero.foto} alt={barbero.nombre} className="w-full h-full object-cover" />
                   ) : (
-                    <Scissors size={26} className="text-gray-700 dark:text-gray-300" />
+                    <Scissors size={20} className="text-gray-700 dark:text-gray-300" />
                   )}
                 </div>
-                <h3 className="font-semibold">{barbero.alias || barbero.nombre}</h3>
+                <h3 className="font-semibold text-sm w-full truncate min-h-[1.25rem]">{barbero.alias || barbero.nombre}</h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 min-h-[1rem] w-full truncate">
                   {barbero.especialidad || '\u00A0'}
                 </p>
                 <span
-                  className={`mt-2 text-xs px-2 py-1 rounded-full ${
+                  className={`mt-1.5 text-xs px-2 py-0.5 rounded-full ${
                     barbero.estado === 'disponible'
                       ? 'bg-green-100 text-green-700'
                       : 'bg-red-100 text-red-700'
@@ -185,38 +185,38 @@ function Home() {
                 </span>
 
                 {rating && rating.promedio ? (
-                  <div className="mt-2 flex items-center gap-1">
-                    <Estrellas valor={rating.promedio} />
+                  <div className="mt-1.5 flex items-center gap-1">
+                    <Estrellas valor={rating.promedio} tamano={13} />
                     <span className="text-xs text-gray-500 dark:text-gray-400">
                       {rating.promedio} ({rating.total})
                     </span>
                   </div>
                 ) : (
-                  <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">Sin reseñas todavía</p>
+                  <p className="mt-1.5 text-xs text-gray-400 dark:text-gray-500">Sin reseñas todavía</p>
                 )}
 
-                <div className="grid grid-cols-2 gap-2 w-full mt-auto pt-3">
+                <div className="grid grid-cols-2 gap-1.5 w-full mt-auto pt-2.5">
                   <button
                     onClick={() => abrirGaleria(barbero.id)}
-                    className="flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-3 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 transition active:scale-95"
+                    className="flex flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-medium bg-gray-900 dark:bg-gray-700 text-white transition active:scale-95"
                   >
-                    <Images size={18} />
-                    <span>Ver trabajos</span>
+                    <Images size={14} />
+                    <span>Trabajos</span>
                   </button>
 
                   <button
                     onClick={() => setModalVerResenas(barbero.id)}
-                    className="flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-3 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 transition active:scale-95"
+                    className="flex flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-medium bg-gray-900 dark:bg-gray-700 text-white transition active:scale-95"
                   >
-                    <MessageCircle size={18} />
-                    <span>Ver reseñas</span>
+                    <MessageCircle size={14} />
+                    <span>Reseñas</span>
                   </button>
 
                   <button
                     onClick={() => abrirModalResena(barbero.id)}
-                    className="col-span-2 flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-3 text-xs font-medium bg-blue-600 text-white transition active:scale-95"
+                    className="col-span-2 flex flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-medium bg-gradient-to-r from-amber-500 to-red-700 text-white transition active:scale-95"
                   >
-                    <MessageSquarePlus size={18} />
+                    <MessageSquarePlus size={14} />
                     <span>Dejar reseña</span>
                   </button>
                 </div>
