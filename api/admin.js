@@ -34,9 +34,10 @@ export default async function handler(req, res) {
     // =========================================
     if (action === 'productos' && req.method === 'GET') {
       const productos = await sql`
-        SELECT id, nombre, descripcion, precio, imagen_url
-        FROM productos
-        ORDER BY id
+        SELECT p.id, p.nombre, p.descripcion, p.precio, p.imagen_url, p.categoria_id, c.nombre AS categoria_nombre
+        FROM productos p
+        LEFT JOIN categorias c ON c.id = p.categoria_id
+        ORDER BY c.orden NULLS LAST, p.id
       `
       return responseSuccess(res, { productos })
     }
@@ -49,15 +50,15 @@ export default async function handler(req, res) {
       const data = parseJSON(body)
       if (!data) return responseError(res, 'JSON inválido')
 
-      const { nombre, descripcion, precio, imagen_url } = data
+      const { nombre, descripcion, precio, imagen_url, categoria_id } = data
       if (!nombre || precio == null) {
         return responseError(res, 'Faltan nombre o precio')
       }
 
       const nuevo = await sql`
-        INSERT INTO productos (nombre, descripcion, precio, imagen_url)
-        VALUES (${nombre}, ${descripcion || null}, ${precio}, ${imagen_url || null})
-        RETURNING id, nombre, descripcion, precio, imagen_url
+        INSERT INTO productos (nombre, descripcion, precio, imagen_url, categoria_id)
+        VALUES (${nombre}, ${descripcion || null}, ${precio}, ${imagen_url || null}, ${categoria_id || null})
+        RETURNING id, nombre, descripcion, precio, imagen_url, categoria_id
       `
       return responseSuccess(res, { producto: nuevo[0] }, 201)
     }
@@ -70,7 +71,7 @@ export default async function handler(req, res) {
       const data = parseJSON(body)
       if (!data) return responseError(res, 'JSON inválido')
 
-      const { id, nombre, descripcion, precio, imagen_url } = data
+      const { id, nombre, descripcion, precio, imagen_url, categoria_id } = data
       if (!id) return responseError(res, 'Falta id')
 
       const editado = await sql`
@@ -78,9 +79,10 @@ export default async function handler(req, res) {
         SET nombre = ${nombre},
             descripcion = ${descripcion || null},
             precio = ${precio},
-            imagen_url = ${imagen_url || null}
+            imagen_url = ${imagen_url || null},
+            categoria_id = ${categoria_id || null}
         WHERE id = ${id}
-        RETURNING id, nombre, descripcion, precio, imagen_url
+        RETURNING id, nombre, descripcion, precio, imagen_url, categoria_id
       `
       if (editado.length === 0) {
         return responseError(res, 'Producto no encontrado', 404)
@@ -291,6 +293,93 @@ export default async function handler(req, res) {
         UPDATE barberos SET password_hash = ${hash} WHERE id = ${barbero_id} RETURNING id
       `
       if (result.length === 0) return responseError(res, 'Barbero no encontrado', 404)
+      return responseSuccess(res, { ok: true })
+    }
+
+    // =========================================
+    // 12. CATEGORÍAS
+    // =========================================
+    if (action === 'categorias' && req.method === 'GET') {
+      const categorias = await sql`SELECT id, nombre, orden FROM categorias ORDER BY orden, nombre`
+      return responseSuccess(res, { categorias })
+    }
+
+    if (action === 'categorias' && req.method === 'POST') {
+      const body = await leerBody(req)
+      const data = parseJSON(body)
+      if (!data) return responseError(res, 'JSON inválido')
+
+      const { nombre } = data
+      if (!nombre || !nombre.trim()) return responseError(res, 'Falta el nombre de la categoría')
+
+      const maxOrden = await sql`SELECT COALESCE(MAX(orden), 0) AS max FROM categorias`
+      const nueva = await sql`
+        INSERT INTO categorias (nombre, orden)
+        VALUES (${nombre.trim()}, ${Number(maxOrden[0].max) + 1})
+        RETURNING id, nombre, orden
+      `
+      return responseSuccess(res, { categoria: nueva[0] }, 201)
+    }
+
+    if (action === 'categorias' && req.method === 'DELETE') {
+      const body = await leerBody(req)
+      const data = parseJSON(body)
+      if (!data) return responseError(res, 'JSON inválido')
+
+      const { id } = data
+      if (!id) return responseError(res, 'Falta id')
+
+      // Los productos de esa categoría quedan sin categoría (no se borran)
+      await sql`UPDATE productos SET categoria_id = NULL WHERE categoria_id = ${id}`
+      const result = await sql`DELETE FROM categorias WHERE id = ${id} RETURNING id`
+      if (result.length === 0) return responseError(res, 'Categoría no encontrada', 404)
+      return responseSuccess(res, { ok: true })
+    }
+
+    // =========================================
+    // 13. FOTOS ADICIONALES DE UN PRODUCTO (hasta 5)
+    // =========================================
+    if (action === 'producto-imagenes' && req.method === 'GET') {
+      const producto_id = req.query.producto_id
+      if (!producto_id) return responseError(res, 'Falta producto_id')
+      const imagenes = await sql`
+        SELECT id, imagen_url, orden FROM producto_imagenes
+        WHERE producto_id = ${producto_id} ORDER BY orden, id
+      `
+      return responseSuccess(res, { imagenes })
+    }
+
+    if (action === 'producto-imagenes' && req.method === 'POST') {
+      const body = await leerBody(req)
+      const data = parseJSON(body)
+      if (!data) return responseError(res, 'JSON inválido')
+
+      const { producto_id, imagen_url } = data
+      if (!producto_id || !imagen_url) return responseError(res, 'Faltan producto_id o imagen_url')
+
+      const existentes = await sql`SELECT COUNT(*) FROM producto_imagenes WHERE producto_id = ${producto_id}`
+      if (Number(existentes[0].count) >= 5) {
+        return responseError(res, 'Ya tiene el máximo de 5 fotos')
+      }
+
+      const nueva = await sql`
+        INSERT INTO producto_imagenes (producto_id, imagen_url, orden)
+        VALUES (${producto_id}, ${imagen_url}, ${Number(existentes[0].count)})
+        RETURNING id, imagen_url, orden
+      `
+      return responseSuccess(res, { imagen: nueva[0] }, 201)
+    }
+
+    if (action === 'producto-imagenes' && req.method === 'DELETE') {
+      const body = await leerBody(req)
+      const data = parseJSON(body)
+      if (!data) return responseError(res, 'JSON inválido')
+
+      const { id } = data
+      if (!id) return responseError(res, 'Falta id')
+
+      const result = await sql`DELETE FROM producto_imagenes WHERE id = ${id} RETURNING id`
+      if (result.length === 0) return responseError(res, 'No encontrada', 404)
       return responseSuccess(res, { ok: true })
     }
 

@@ -15,6 +15,8 @@ import BarberoGaleria from './pages/BarberoGaleria.jsx'
 import MisCitas from './pages/MisCitas.jsx'
 import AdminHorarios from './pages/AdminHorarios.jsx'
 import AdminBarberos from './pages/AdminBarberos.jsx'
+import AdminNegocio from './pages/AdminNegocio.jsx'
+import CatalogoCategoria from './pages/CatalogoCategoria.jsx'
 import Registro from './pages/Registro.jsx'
 import { obtenerTema, aplicarTema } from './lib/tema.js'
 
@@ -49,6 +51,8 @@ function App() {
           <Route path="/mis-citas" element={<PaginaAnimada><MisCitas /></PaginaAnimada>} />
           <Route path="/admin-horarios" element={<PaginaAnimada><AdminHorarios /></PaginaAnimada>} />
           <Route path="/admin-barberos" element={<PaginaAnimada><AdminBarberos /></PaginaAnimada>} />
+          <Route path="/admin-negocio" element={<PaginaAnimada><AdminNegocio /></PaginaAnimada>} />
+          <Route path="/catalogo/:categoriaId" element={<PaginaAnimada><CatalogoCategoria /></PaginaAnimada>} />
           <Route path="/registro" element={<PaginaAnimada><Registro /></PaginaAnimada>} />
         </Routes>
       </AnimatePresence>

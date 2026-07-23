@@ -47,25 +47,26 @@ export default async function handler(req, res) {
     const data = parseJSON(body)
     if (!data) return responseError(res, 'JSON inválido')
 
-    const { imagen_url, nombre, alias, especialidad } = data
+    const { imagen_url, nombre, alias, especialidad, whatsapp } = data
 
     if (imagen_url) {
       await sql`UPDATE barberos SET foto = ${imagen_url} WHERE id = ${barbero.id}`
     }
-    if (nombre !== undefined || alias !== undefined || especialidad !== undefined) {
-      const actual = await sql`SELECT nombre, alias, especialidad FROM barberos WHERE id = ${barbero.id}`
+    if (nombre !== undefined || alias !== undefined || especialidad !== undefined || whatsapp !== undefined) {
+      const actual = await sql`SELECT nombre, alias, especialidad, whatsapp FROM barberos WHERE id = ${barbero.id}`
       const base = actual[0]
       await sql`
         UPDATE barberos
         SET nombre = ${nombre !== undefined ? nombre : base.nombre},
             alias = ${alias !== undefined ? (alias || null) : base.alias},
-            especialidad = ${especialidad !== undefined ? (especialidad || null) : base.especialidad}
+            especialidad = ${especialidad !== undefined ? (especialidad || null) : base.especialidad},
+            whatsapp = ${whatsapp !== undefined ? (whatsapp || null) : base.whatsapp}
         WHERE id = ${barbero.id}
       `
     }
 
     const actualizado = await sql`
-      SELECT nombre, alias, especialidad, foto FROM barberos WHERE id = ${barbero.id}
+      SELECT nombre, alias, especialidad, foto, whatsapp FROM barberos WHERE id = ${barbero.id}
     `
     return responseSuccess(res, { ok: true, perfil: actualizado[0] })
   }

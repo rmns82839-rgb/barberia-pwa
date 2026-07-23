@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
-import { Scissors, Star, MessageSquarePlus, Images, MessageCircle } from 'lucide-react'
+import { Scissors, Star, MessageSquarePlus, Images, MessageCircle, MapPin } from 'lucide-react'
+import { IconoWhatsApp, IconoInstagram, IconoFacebook, IconoTikTok, IconoYouTube } from '../components/IconosRedes.jsx'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import Modal from '../components/Modal.jsx'
@@ -49,6 +50,14 @@ function Home() {
   const [fotosGaleria, setFotosGaleria] = useState([])
   const [cargandoGaleria, setCargandoGaleria] = useState(false)
   const [modalVerResenas, setModalVerResenas] = useState(null)
+  const [negocio, setNegocio] = useState(null)
+
+  useEffect(() => {
+    fetch('/api/negocio')
+      .then((res) => res.json())
+      .then((data) => setNegocio(data.negocio))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     fetch('/api/barberos')
@@ -128,10 +137,33 @@ function Home() {
 
   return (
     <div className="p-4 sm:p-6 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold mb-2">Bienvenido a la Barbería</h1>
-      <p className="text-gray-600 dark:text-gray-400 mb-4">
+      <div className="flex items-center gap-3 mb-2">
+        {negocio?.logo_url && (
+          <img
+            src={negocio.logo_url}
+            alt={negocio.nombre}
+            className="w-12 h-12 rounded-full object-cover shrink-0"
+          />
+        )}
+        <div>
+          <h1 className="text-2xl font-bold">
+            Bienvenido a {negocio?.nombre || 'la Barbería'}
+          </h1>
+          {negocio?.eslogan && (
+            <p className="text-sm text-gray-500 dark:text-gray-400 italic">{negocio.eslogan}</p>
+          )}
+        </div>
+      </div>
+
+      <p className="text-gray-600 dark:text-gray-400 mb-1">
         Agenda tu cita, revisa el catálogo de productos y más.
       </p>
+      {negocio?.direccion && (
+        <p className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 mb-4">
+          <MapPin size={13} />
+          {negocio.direccion}
+        </p>
+      )}
 
       <button
         onClick={() => navigate('/login')}
@@ -195,7 +227,7 @@ function Home() {
                   <p className="mt-1.5 text-xs text-gray-400 dark:text-gray-500">Sin reseñas todavía</p>
                 )}
 
-                <div className="grid grid-cols-2 gap-1.5 w-full mt-auto pt-2.5">
+                <div className="grid grid-cols-3 gap-1.5 w-full mt-auto pt-2.5">
                   <button
                     onClick={() => abrirGaleria(barbero.id)}
                     className="flex flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-medium bg-gray-900 dark:bg-gray-700 text-white transition active:scale-95"
@@ -213,8 +245,26 @@ function Home() {
                   </button>
 
                   <button
+                    onClick={() => {
+                      if (!barbero.whatsapp) {
+                        toast.info('Este barbero no ha configurado su WhatsApp todavía')
+                        return
+                      }
+                      window.open(`https://wa.me/57${barbero.whatsapp}`, '_blank')
+                    }}
+                    className={`flex flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-medium transition active:scale-95 ${
+                      barbero.whatsapp
+                        ? 'bg-green-600 text-white'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500'
+                    }`}
+                  >
+                    <IconoWhatsApp size={14} />
+                    <span>WhatsApp</span>
+                  </button>
+
+                  <button
                     onClick={() => abrirModalResena(barbero.id)}
-                    className="col-span-2 flex flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-medium bg-gradient-to-r from-amber-500 to-red-700 text-white transition active:scale-95"
+                    className="col-span-3 flex flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-medium bg-gradient-to-r from-amber-500 to-red-700 text-white transition active:scale-95"
                   >
                     <MessageSquarePlus size={14} />
                     <span>Dejar reseña</span>
@@ -304,6 +354,98 @@ function Home() {
           </div>
         )}
       </Modal>
+
+      {negocio && (negocio.direccion || negocio.instagram || negocio.facebook || negocio.tiktok || negocio.youtube || negocio.whatsapp || negocio.foto_ubicacion_url) && (
+        <div className="mt-10 pt-6 border-t dark:border-gray-700 text-center">
+          {negocio.foto_ubicacion_url && (
+            <img
+              src={negocio.foto_ubicacion_url}
+              alt="Nuestra ubicación"
+              className="w-full h-40 object-cover rounded-xl mb-4"
+            />
+          )}
+
+          {negocio.direccion && (
+            <p className="flex items-center justify-center gap-1 text-sm text-gray-600 dark:text-gray-400 mb-3">
+              <MapPin size={14} />
+              {negocio.direccion}
+            </p>
+          )}
+
+          {negocio.mapa_url && (
+            <a
+              href={negocio.mapa_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 font-medium mb-4"
+            >
+              <MapPin size={14} />
+              Cómo llegar
+            </a>
+          )}
+
+          {negocio.whatsapp && (
+            <a
+              href={`https://wa.me/57${negocio.whatsapp}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 mb-3 bg-green-600 text-white text-sm font-medium px-4 py-2 rounded-full"
+            >
+              <IconoWhatsApp size={14} />
+              Escríbenos por WhatsApp
+            </a>
+          )}
+
+          {(negocio.instagram || negocio.facebook || negocio.tiktok || negocio.youtube) && (
+            <div className="flex items-center justify-center gap-2">
+              {negocio.instagram && (
+                <a
+                  href={negocio.instagram}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Instagram"
+                  className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 text-white transition active:scale-95"
+                >
+                  <IconoInstagram size={18} />
+                </a>
+              )}
+              {negocio.facebook && (
+                <a
+                  href={negocio.facebook}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Facebook"
+                  className="flex items-center justify-center w-9 h-9 rounded-full bg-blue-600 text-white transition active:scale-95"
+                >
+                  <IconoFacebook size={18} />
+                </a>
+              )}
+              {negocio.tiktok && (
+                <a
+                  href={negocio.tiktok}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="TikTok"
+                  className="flex items-center justify-center w-9 h-9 rounded-full bg-gray-900 dark:bg-gray-700 text-white transition active:scale-95"
+                >
+                  <IconoTikTok size={18} />
+                </a>
+              )}
+              {negocio.youtube && (
+                <a
+                  href={negocio.youtube}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="YouTube"
+                  className="flex items-center justify-center w-9 h-9 rounded-full bg-red-600 text-white transition active:scale-95"
+                >
+                  <IconoYouTube size={18} />
+                </a>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

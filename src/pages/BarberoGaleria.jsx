@@ -33,6 +33,7 @@ function BarberoGaleria() {
   const [nombre, setNombre] = useState('')
   const [alias, setAlias] = useState('')
   const [especialidad, setEspecialidad] = useState('')
+  const [whatsapp, setWhatsapp] = useState('')
   const [guardandoPerfil, setGuardandoPerfil] = useState(false)
   const [modalPassword, setModalPassword] = useState(false)
   const [passwordActual, setPasswordActual] = useState('')
@@ -84,6 +85,7 @@ function BarberoGaleria() {
           setNombre(yo.nombre || '')
           setAlias(yo.alias || '')
           setEspecialidad(yo.especialidad || '')
+          setWhatsapp(yo.whatsapp || '')
           setEstado(yo.estado || 'disponible')
         }
       })
@@ -260,6 +262,7 @@ function BarberoGaleria() {
           nombre: nombre.trim(),
           alias: alias.trim(),
           especialidad: especialidad.trim(),
+          whatsapp: whatsapp.replace(/\D/g, ''),
         }),
       })
       const data = await res.json()
@@ -623,6 +626,18 @@ function BarberoGaleria() {
               rows={2}
               placeholder="Ej: Especialista en fade y diseños"
               className="w-full border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm resize-none"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">
+              WhatsApp de contacto (opcional — tus clientes podrán escribirte directo)
+            </label>
+            <input
+              type="tel"
+              value={whatsapp}
+              onChange={(e) => setWhatsapp(e.target.value)}
+              placeholder="Ej: 3001234567"
+              className="w-full border dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
             />
           </div>
           <button

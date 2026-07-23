@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Scissors, Calendar } from 'lucide-react'
+import { IconoWhatsApp } from '../components/IconosRedes.jsx'
 import { useAuth } from '../context/AuthContext'
 import { hoyColombia } from '../lib/fechas.js'
 import { pedirPermisoNotificaciones, mostrarNotificacion } from '../lib/notificaciones.js'
@@ -111,7 +112,6 @@ function Citas() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           barbero_id: barberoSel,
-          cliente_id: cliente.id,
           fecha,
           hora: horaSel,
         }),
@@ -165,14 +165,35 @@ function Citas() {
   }
 
   if (confirmada) {
+    const barberoConfirmado = barberos.find((b) => b.id === barberoSel)
+    const fechaBonita = String(confirmada.fecha).split('T')[0].split('-').reverse().join('/')
+
+    const avisarBarberoWhatsapp = () => {
+      const mensaje = encodeURIComponent(
+        `¡Hola! 👋 Soy ${cliente.nombre} y quiero confirmarte mi cita del ${fechaBonita} a las ${confirmada.hora} 💈`
+      )
+      window.open(`https://wa.me/57${barberoConfirmado.whatsapp}?text=${mensaje}`, '_blank')
+    }
+
     return (
       <div className="p-6 max-w-md mx-auto text-center">
         {bannerAviso}
         <div className="text-5xl mb-4">✅</div>
         <h1 className="text-xl font-bold mb-2">¡Cita confirmada!</h1>
-        <p className="text-gray-600">
-          Te esperamos el {String(confirmada.fecha).split('T')[0].split('-').reverse().join('/')} a las {confirmada.hora}.
+        <p className="text-gray-600 dark:text-gray-400">
+          Te esperamos el {fechaBonita} a las {confirmada.hora}.
         </p>
+
+        {barberoConfirmado?.whatsapp && (
+          <button
+            onClick={avisarBarberoWhatsapp}
+            className="mt-4 flex items-center justify-center gap-2 w-full bg-green-600 text-white rounded-lg px-4 py-2.5 font-medium transition active:scale-95"
+          >
+            <IconoWhatsApp size={16} />
+            Avisarle a {barberoConfirmado.alias || barberoConfirmado.nombre} por WhatsApp
+          </button>
+        )}
+
         <button
           onClick={() => {
             setConfirmada(null)
@@ -180,7 +201,7 @@ function Citas() {
             setFecha('')
             setHoraSel(null)
           }}
-          className="mt-6 bg-gray-900 text-white rounded-lg px-4 py-2 transition active:scale-95"
+          className="mt-3 w-full bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg px-4 py-2 transition active:scale-95"
         >
           Agendar otra cita
         </button>

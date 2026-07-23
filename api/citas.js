@@ -283,6 +283,9 @@ export default async function handler(req, res) {
 
     // ---- POST: crear cita agendada ----
     if (req.method === "POST" && accion === "crear") {
+      const cliente = await requireCliente(req, res)
+      if (!cliente) return
+
       const raw = await leerBody(req)
       let body
       try {
@@ -290,10 +293,11 @@ export default async function handler(req, res) {
       } catch {
         return res.status(400).json({ error: "JSON inválido" })
       }
-      const { barbero_id, cliente_id, fecha, hora, servicio } = body
-      if (!barbero_id || !cliente_id || !fecha || !hora) {
+      const { barbero_id, fecha, hora, servicio } = body
+      if (!barbero_id || !fecha || !hora) {
         return res.status(400).json({ error: "Faltan datos obligatorios" })
       }
+      const cliente_id = cliente.id // ignoramos cualquier cliente_id que venga del cuerpo
 
       const ocupada = await sql`
         SELECT id FROM citas
@@ -304,6 +308,22 @@ export default async function handler(req, res) {
       `
       if (ocupada.length > 0) {
         return res.status(409).json({ error: "Ese horario ya fue tomado, elige otro" })
+      }
+
+      const yaTieneCita = await sql`
+        SELECT c.id, b.nombre AS barbero_nombre, b.alias AS barbero_alias
+        FROM citas c
+        JOIN barberos b ON b.id = c.barbero_id
+        WHERE c.cliente_id = ${cliente_id}
+          AND c.fecha = ${fecha}
+          AND c.hora = ${hora}
+          AND c.estado != 'cancelada'
+      `
+      if (yaTieneCita.length > 0) {
+        const otro = yaTieneCita[0]
+        return res.status(409).json({
+          error: `Ya tienes una cita a esa hora con ${otro.barbero_alias || otro.barbero_nombre}. Cancélala primero si quieres cambiar de barbero.`,
+        })
       }
 
       const nueva = await sql`
