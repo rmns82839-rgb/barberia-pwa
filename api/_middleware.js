@@ -19,14 +19,23 @@ function leerCookie(req, nombre) {
   return match ? decodeURIComponent(match.split('=')[1]) : null
 }
 
+function agregarSetCookie(res, valor) {
+  const actual = res.getHeader('Set-Cookie')
+  if (!actual) {
+    res.setHeader('Set-Cookie', valor)
+  } else if (Array.isArray(actual)) {
+    res.setHeader('Set-Cookie', [...actual, valor])
+  } else {
+    res.setHeader('Set-Cookie', [actual, valor])
+  }
+}
+
 export function ponerCookieSesion(res, nombre, token, maxAgeSegundos) {
-  res.setHeader('Set-Cookie',
-    `${nombre}=${encodeURIComponent(token)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAgeSegundos}`
-  )
+  agregarSetCookie(res, `${nombre}=${encodeURIComponent(token)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAgeSegundos}`)
 }
 
 export function borrarCookieSesion(res, nombre) {
-  res.setHeader('Set-Cookie', `${nombre}=; Path=/; HttpOnly; Max-Age=0`)
+  agregarSetCookie(res, `${nombre}=; Path=/; HttpOnly; Max-Age=0`)
 }
 
 function verificarToken(req, cookieName) {
@@ -39,13 +48,36 @@ function verificarToken(req, cookieName) {
   }
 }
 
-// Para el chequeo rápido de "quién está logueado" al cargar la app (no toca la BD)
-export function verificarSesion(req) {
-  return {
-    admin: verificarToken(req, 'admin_session'),
-    cliente: verificarToken(req, 'cliente_session'),
-    barbero: verificarToken(req, 'barbero_session'),
+// Para el chequeo de "quién está logueado" al cargar la app — SÍ valida contra la BD
+// (si el registro ya no existe, borra la cookie inválida para que la app deje de creer que hay sesión)
+export async function verificarSesion(req, res) {
+  const adminToken = verificarToken(req, 'admin_session')
+  const clienteToken = verificarToken(req, 'cliente_session')
+  const barberoToken = verificarToken(req, 'barbero_session')
+
+  let admin = null
+  let cliente = null
+  let barbero = null
+
+  if (adminToken) {
+    const rows = await sql`SELECT id FROM admins WHERE id = ${adminToken.id}`
+    if (rows.length > 0) admin = adminToken
+    else if (res) borrarCookieSesion(res, 'admin_session')
   }
+
+  if (clienteToken) {
+    const rows = await sql`SELECT id FROM clientes WHERE id = ${clienteToken.id}`
+    if (rows.length > 0) cliente = clienteToken
+    else if (res) borrarCookieSesion(res, 'cliente_session')
+  }
+
+  if (barberoToken) {
+    const rows = await sql`SELECT id FROM barberos WHERE id = ${barberoToken.id}`
+    if (rows.length > 0) barbero = barberoToken
+    else if (res) borrarCookieSesion(res, 'barbero_session')
+  }
+
+  return { admin, cliente, barbero }
 }
 
 export async function requireAdmin(req, res) {

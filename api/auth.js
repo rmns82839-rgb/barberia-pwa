@@ -204,7 +204,7 @@ export default async function handler(req, res) {
 
   // QUIÉN ESTÁ LOGUEADO (para AuthContext al cargar la app)
   if (action === 'whoami' && req.method === 'GET') {
-    const { admin, cliente, barbero } = verificarSesion(req)
+    const { admin, cliente, barbero } = await verificarSesion(req, res)
     return responseSuccess(res, { admin, cliente, barbero })
   }
 
