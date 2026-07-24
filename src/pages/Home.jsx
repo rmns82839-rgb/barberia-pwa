@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import Modal from '../components/Modal.jsx'
 import CargandoTijera from '../components/CargandoTijera.jsx'
+import PremiosProgreso from '../components/PremiosProgreso.jsx'
 
 function Estrellas({ valor, tamano = 16 }) {
   return (
@@ -170,6 +171,8 @@ function Home() {
       >
         ✂️ Aparta tu cita ahora
       </button>
+
+      <PremiosProgreso />
 
       <h2 className="text-lg font-semibold mb-3">Nuestros barberos</h2>
 

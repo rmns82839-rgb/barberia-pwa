@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, Sun, Moon, Scissors } from 'lucide-react'
+import { Menu, X, Sun, Moon, Scissors, Download } from 'lucide-react'
 import { obtenerTema, alternarTema } from '../lib/tema.js'
+import { useInstalarPWA } from '../context/InstalarPWAContext.jsx'
 
 const enlaces = [
   { to: '/', label: 'Inicio' },
@@ -15,6 +16,7 @@ function Navbar() {
   const location = useLocation()
   const [abierto, setAbierto] = useState(false)
   const [tema, setTema] = useState('claro')
+  const { puedeInstalar, instalar } = useInstalarPWA()
 
   useEffect(() => {
     setTema(obtenerTema())
@@ -64,6 +66,16 @@ function Navbar() {
         </div>
 
         <div className="flex items-center gap-2">
+          {puedeInstalar && (
+            <button
+              onClick={instalar}
+              aria-label="Instalar app"
+              className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/10 transition active:scale-95"
+            >
+              <Download size={16} />
+            </button>
+          )}
+
           <button
             onClick={toggleTema}
             aria-label="Cambiar tema"

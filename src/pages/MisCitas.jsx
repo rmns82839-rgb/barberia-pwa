@@ -5,6 +5,7 @@ import { CalendarX2, Scissors } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import Modal from '../components/Modal.jsx'
 import CargandoTijera from '../components/CargandoTijera.jsx'
+import PremiosProgreso from '../components/PremiosProgreso.jsx'
 
 function MisCitas() {
   const { cliente, cargando: cargandoAuth } = useAuth()
@@ -80,6 +81,8 @@ function MisCitas() {
   return (
     <div className="p-4 sm:p-6 max-w-md mx-auto">
       <h1 className="text-xl font-bold mb-4">Mis citas</h1>
+
+      <PremiosProgreso />
 
       {cargando && (
         <div className="space-y-3">

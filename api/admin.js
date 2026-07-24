@@ -21,7 +21,7 @@ export default async function handler(req, res) {
     // =========================================
     if (action === 'clientes' && req.method === 'GET') {
       const clientes = await sql`
-        SELECT id, nombre, telefono, creado_en
+        SELECT id, nombre, telefono, creado_en, cortes_contador
         FROM clientes
         WHERE telefono NOT LIKE 'walkin-%'
         ORDER BY creado_en DESC
@@ -404,6 +404,85 @@ export default async function handler(req, res) {
       const result = await sql`DELETE FROM producto_imagenes WHERE id = ${id} RETURNING id`
       if (result.length === 0) return responseError(res, 'No encontrada', 404)
       return responseSuccess(res, { ok: true })
+    }
+
+    // =========================================
+    // 14. PREMIOS (programa de fidelización)
+    // =========================================
+    if (action === 'premios' && req.method === 'GET') {
+      const premios = await sql`
+        SELECT id, cortes_requeridos, descripcion, activo
+        FROM premios ORDER BY cortes_requeridos ASC
+      `
+      return responseSuccess(res, { premios })
+    }
+
+    if (action === 'premios' && req.method === 'POST') {
+      const body = await leerBody(req)
+      const data = parseJSON(body)
+      if (!data) return responseError(res, 'JSON inválido')
+
+      const { cortes_requeridos, descripcion } = data
+      if (!cortes_requeridos || !descripcion || !descripcion.trim()) {
+        return responseError(res, 'Faltan cortes_requeridos o descripción')
+      }
+
+      const nuevo = await sql`
+        INSERT INTO premios (cortes_requeridos, descripcion, activo)
+        VALUES (${cortes_requeridos}, ${descripcion.trim()}, true)
+        RETURNING id, cortes_requeridos, descripcion, activo
+      `
+      return responseSuccess(res, { premio: nuevo[0] }, 201)
+    }
+
+    if (action === 'premios' && req.method === 'PUT') {
+      const body = await leerBody(req)
+      const data = parseJSON(body)
+      if (!data) return responseError(res, 'JSON inválido')
+
+      const { id, cortes_requeridos, descripcion, activo } = data
+      if (!id) return responseError(res, 'Falta id')
+
+      const editado = await sql`
+        UPDATE premios
+        SET cortes_requeridos = ${cortes_requeridos},
+            descripcion = ${descripcion.trim()},
+            activo = ${activo !== undefined ? activo : true}
+        WHERE id = ${id}
+        RETURNING id, cortes_requeridos, descripcion, activo
+      `
+      if (editado.length === 0) return responseError(res, 'Premio no encontrado', 404)
+      return responseSuccess(res, { premio: editado[0] })
+    }
+
+    if (action === 'premios' && req.method === 'DELETE') {
+      const body = await leerBody(req)
+      const data = parseJSON(body)
+      if (!data) return responseError(res, 'JSON inválido')
+
+      const { id } = data
+      if (!id) return responseError(res, 'Falta id')
+
+      const result = await sql`DELETE FROM premios WHERE id = ${id} RETURNING id`
+      if (result.length === 0) return responseError(res, 'Premio no encontrado', 404)
+      return responseSuccess(res, { ok: true })
+    }
+
+    // ---- Entregar premio a un cliente (reinicia su contador) ----
+    if (action === 'premio-entregar' && req.method === 'POST') {
+      const body = await leerBody(req)
+      const data = parseJSON(body)
+      if (!data) return responseError(res, 'JSON inválido')
+
+      const { cliente_id } = data
+      if (!cliente_id) return responseError(res, 'Falta cliente_id')
+
+      const result = await sql`
+        UPDATE clientes SET cortes_contador = 0 WHERE id = ${cliente_id}
+        RETURNING id, nombre, cortes_contador
+      `
+      if (result.length === 0) return responseError(res, 'Cliente no encontrado', 404)
+      return responseSuccess(res, { cliente: result[0] })
     }
 
     return responseError(res, 'Acción no reconocida', 400)

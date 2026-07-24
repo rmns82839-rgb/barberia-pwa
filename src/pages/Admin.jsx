@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Package, Users, KeyRound, LogOut, Clock, BarChart3, Store } from 'lucide-react'
+import { Package, Users, KeyRound, LogOut, Clock, BarChart3, Store, Gift } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import Modal from '../components/Modal.jsx'
 import CargandoTijera from '../components/CargandoTijera.jsx'
@@ -125,6 +125,13 @@ function Admin() {
           >
             <Store size={14} />
             Negocio
+          </button>
+          <button
+            onClick={() => navigate('/admin-premios')}
+            className={`${chip} bg-pink-100 dark:bg-pink-900/40 text-pink-700 dark:text-pink-300`}
+          >
+            <Gift size={14} />
+            Premios
           </button>
           <button
             onClick={() => setModalCredenciales(true)}

@@ -52,6 +52,24 @@ export default async function handler(req, res) {
       return res.status(200).json({ citas })
     }
 
+    // ---- GET: mi progreso de premios (cliente logueado) ----
+    if (req.method === "GET" && accion === "mis-premios") {
+      const cliente = await requireCliente(req, res)
+      if (!cliente) return
+
+      const filas = await sql`SELECT cortes_contador FROM clientes WHERE id = ${cliente.id}`
+      const contador = filas[0]?.cortes_contador || 0
+
+      const premios = await sql`
+        SELECT id, cortes_requeridos, descripcion
+        FROM premios
+        WHERE activo = true
+        ORDER BY cortes_requeridos ASC
+      `
+
+      return res.status(200).json({ contador, premios })
+    }
+
     // ---- POST: cancelar una cita propia (cliente logueado) ----
     if (req.method === "POST" && accion === "cancelar") {
       const cliente = await requireCliente(req, res)
@@ -177,11 +195,20 @@ export default async function handler(req, res) {
         UPDATE citas
         SET estado = 'atendida'
         WHERE id = ${cita_id} AND barbero_id = ${barbero.id}
-        RETURNING id
+        RETURNING id, cliente_id
       `
       if (result.length === 0) {
         return res.status(404).json({ error: "Cita no encontrada o no te pertenece" })
       }
+
+      // Suma al contador de premios del cliente (si tenía cuenta registrada)
+      if (result[0].cliente_id) {
+        await sql`
+          UPDATE clientes SET cortes_contador = cortes_contador + 1
+          WHERE id = ${result[0].cliente_id}
+        `
+      }
+
       return res.status(200).json({ ok: true })
     }
 
