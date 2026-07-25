@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { SprayCan, ShoppingCart, Plus, Minus, Trash2, MessageCircle, ArrowLeft, MapPin } from 'lucide-react'
 import Modal from '../components/Modal.jsx'
 import Carrusel from '../components/Carrusel.jsx'
+import LikesComentarios from '../components/LikesComentarios.jsx'
 import { IconoWhatsApp, IconoInstagram, IconoFacebook, IconoTikTok, IconoYouTube } from '../components/IconosRedes.jsx'
 
 const WHATSAPP_BARBERIA = '3054494534'
@@ -209,6 +210,7 @@ function CatalogoCategoria() {
         {productoAbierto && (
           <div>
             <Carrusel imagenes={imagenesProducto} alt={productoAbierto.nombre} />
+            <LikesComentarios tipo="producto" itemId={productoAbierto.id} />
             {productoAbierto.descripcion && (
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-3">{productoAbierto.descripcion}</p>
             )}

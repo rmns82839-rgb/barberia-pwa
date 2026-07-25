@@ -1,0 +1,143 @@
+import { neon } from "@neondatabase/serverless"
+import dotenv from "dotenv"
+import { requireCliente, requireBarbero, verificarSesion } from "./_middleware.js"
+
+dotenv.config({ path: ".env.local" })
+
+function leerBody(req) {
+  return new Promise((resolve) => {
+    let data = ""
+    req.on("data", (chunk) => (data += chunk))
+    req.on("end", () => resolve(data))
+  })
+}
+
+export default async function handler(req, res) {
+  try {
+    const sql = neon(process.env.DATABASE_URL)
+    const accion = req.query.accion
+
+    // ---- GET: likes + comentarios de un item (público; si hay sesión de cliente, indica si ya reaccionó) ----
+    if (req.method === "GET" && !accion) {
+      const { tipo, item_id } = req.query
+      if (!tipo || !item_id) return res.status(400).json({ error: "Faltan tipo o item_id" })
+
+      const totalLikes = await sql`
+        SELECT COUNT(*) FROM reacciones WHERE tipo = ${tipo} AND item_id = ${item_id}
+      `
+      const comentarios = await sql`
+        SELECT c.id, c.comentario, c.creado_en, cl.nombre AS cliente_nombre
+        FROM comentarios c
+        JOIN clientes cl ON cl.id = c.cliente_id
+        WHERE c.tipo = ${tipo} AND c.item_id = ${item_id}
+        ORDER BY c.creado_en DESC
+      `
+
+      let miLike = false
+      let miComentario = null
+      const { cliente } = await verificarSesion(req, res)
+      if (cliente) {
+        const yaLike = await sql`
+          SELECT id FROM reacciones WHERE tipo = ${tipo} AND item_id = ${item_id} AND cliente_id = ${cliente.id}
+        `
+        miLike = yaLike.length > 0
+        const yaComento = await sql`
+          SELECT comentario FROM comentarios WHERE tipo = ${tipo} AND item_id = ${item_id} AND cliente_id = ${cliente.id}
+        `
+        miComentario = yaComento[0]?.comentario || null
+      }
+
+      return res.status(200).json({
+        total_likes: Number(totalLikes[0].count),
+        comentarios,
+        mi_like: miLike,
+        mi_comentario: miComentario,
+      })
+    }
+
+    // ---- POST: dar/quitar "me encanta" ----
+    if (req.method === "POST" && accion === "like") {
+      const cliente = await requireCliente(req, res)
+      if (!cliente) return
+
+      const raw = await leerBody(req)
+      let data
+      try { data = JSON.parse(raw) } catch { return res.status(400).json({ error: "JSON inválido" }) }
+      const { tipo, item_id } = data
+      if (!tipo || !item_id) return res.status(400).json({ error: "Faltan tipo o item_id" })
+
+      const existente = await sql`
+        SELECT id FROM reacciones WHERE tipo = ${tipo} AND item_id = ${item_id} AND cliente_id = ${cliente.id}
+      `
+      if (existente.length > 0) {
+        await sql`DELETE FROM reacciones WHERE id = ${existente[0].id}`
+        return res.status(200).json({ like: false })
+      }
+      await sql`INSERT INTO reacciones (tipo, item_id, cliente_id) VALUES (${tipo}, ${item_id}, ${cliente.id})`
+      return res.status(200).json({ like: true })
+    }
+
+    // ---- POST: agregar/editar/borrar mi comentario (uno por cliente por item) ----
+    if (req.method === "POST" && accion === "comentar") {
+      const cliente = await requireCliente(req, res)
+      if (!cliente) return
+
+      const raw = await leerBody(req)
+      let data
+      try { data = JSON.parse(raw) } catch { return res.status(400).json({ error: "JSON inválido" }) }
+      const { tipo, item_id, comentario } = data
+      if (!tipo || !item_id) return res.status(400).json({ error: "Faltan tipo o item_id" })
+
+      if (!comentario || !comentario.trim()) {
+        await sql`DELETE FROM comentarios WHERE tipo = ${tipo} AND item_id = ${item_id} AND cliente_id = ${cliente.id}`
+        return res.status(200).json({ ok: true, borrado: true })
+      }
+
+      await sql`
+        INSERT INTO comentarios (tipo, item_id, cliente_id, comentario)
+        VALUES (${tipo}, ${item_id}, ${cliente.id}, ${comentario.trim()})
+        ON CONFLICT (tipo, item_id, cliente_id)
+        DO UPDATE SET comentario = ${comentario.trim()}, creado_en = NOW()
+      `
+      return res.status(200).json({ ok: true })
+    }
+
+    // ---- GET: contador de interacciones nuevas en el portafolio del barbero ----
+    if (req.method === "GET" && accion === "mis-notificaciones") {
+      const barbero = await requireBarbero(req, res)
+      if (!barbero) return
+
+      const fila = await sql`SELECT interacciones_vistas_en FROM barberos WHERE id = ${barbero.id}`
+      const desde = fila[0]?.interacciones_vistas_en || new Date(0)
+
+      const likes = await sql`
+        SELECT COUNT(*) FROM reacciones r
+        JOIN galeria_trabajos g ON g.id = r.item_id
+        WHERE r.tipo = 'trabajo' AND g.barbero_id = ${barbero.id} AND r.creado_en > ${desde}
+      `
+      const comentarios = await sql`
+        SELECT COUNT(*) FROM comentarios c
+        JOIN galeria_trabajos g ON g.id = c.item_id
+        WHERE c.tipo = 'trabajo' AND g.barbero_id = ${barbero.id} AND c.creado_en > ${desde}
+      `
+
+      return res.status(200).json({
+        total: Number(likes[0].count) + Number(comentarios[0].count),
+      })
+    }
+
+    // ---- POST: marcar como vistas las interacciones (reinicia el contador) ----
+    if (req.method === "POST" && accion === "marcar-vistas") {
+      const barbero = await requireBarbero(req, res)
+      if (!barbero) return
+
+      await sql`UPDATE barberos SET interacciones_vistas_en = NOW() WHERE id = ${barbero.id}`
+      return res.status(200).json({ ok: true })
+    }
+
+    return res.status(400).json({ error: "Acción no reconocida" })
+  } catch (error) {
+    console.error("ERROR REAL:", error.message)
+    return res.status(500).json({ error: error.message })
+  }
+}

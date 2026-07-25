@@ -5,6 +5,7 @@ import { ImagePlus, MapPin } from 'lucide-react'
 import { IconoWhatsApp, IconoInstagram, IconoFacebook, IconoYouTube } from '../components/IconosRedes.jsx'
 import { useAuth } from '../context/AuthContext'
 import CargandoTijera from '../components/CargandoTijera.jsx'
+import { convertirSiHeic } from '../lib/imagenes.js'
 
 function AdminNegocio() {
   const { admin } = useAuth()
@@ -58,10 +59,11 @@ function AdminNegocio() {
   }, [])
 
   const subirImagen = async (e, setter, setSubiendo) => {
-    const archivo = e.target.files[0]
-    if (!archivo) return
+    const archivoOriginal = e.target.files[0]
+    if (!archivoOriginal) return
     setSubiendo(true)
     try {
+      const archivo = await convertirSiHeic(archivoOriginal)
       const res = await fetch(`/api/subir-imagen?filename=${encodeURIComponent(archivo.name)}`, {
         method: 'POST',
         body: archivo,

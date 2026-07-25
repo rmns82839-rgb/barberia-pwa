@@ -5,6 +5,7 @@ import { Pencil, Trash2, ImagePlus, Tag, X, Plus } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import Modal from '../components/Modal.jsx'
 import CargandoTijera from '../components/CargandoTijera.jsx'
+import { convertirSiHeic } from '../lib/imagenes.js'
 
 function AdminProductos() {
   const { admin } = useAuth()
@@ -87,10 +88,11 @@ function AdminProductos() {
   }
 
   const subirFotoCategoria = async (e) => {
-    const archivo = e.target.files[0]
-    if (!archivo) return
+    const archivoOriginal = e.target.files[0]
+    if (!archivoOriginal) return
     setSubiendoFotoCategoria(true)
     try {
+      const archivo = await convertirSiHeic(archivoOriginal)
       const res = await fetch(
         `/api/subir-imagen?filename=${encodeURIComponent(archivo.name)}`,
         { method: 'POST', body: archivo }
@@ -184,10 +186,11 @@ function AdminProductos() {
   }
 
   const subirFoto = async (e) => {
-    const archivo = e.target.files[0]
-    if (!archivo) return
+    const archivoOriginal = e.target.files[0]
+    if (!archivoOriginal) return
     setSubiendoFoto(true)
     try {
+      const archivo = await convertirSiHeic(archivoOriginal)
       const res = await fetch(
         `/api/subir-imagen?filename=${encodeURIComponent(archivo.name)}`,
         { method: 'POST', body: archivo }
@@ -204,14 +207,15 @@ function AdminProductos() {
   }
 
   const subirFotoExtra = async (e) => {
-    const archivo = e.target.files[0]
-    if (!archivo || !editandoId) return
+    const archivoOriginal = e.target.files[0]
+    if (!archivoOriginal || !editandoId) return
     if (imagenesExtra.length >= 5) {
       toast.error('Ya tiene el máximo de 5 fotos')
       return
     }
     setSubiendoExtra(true)
     try {
+      const archivo = await convertirSiHeic(archivoOriginal)
       const resSubida = await fetch(
         `/api/subir-imagen?filename=${encodeURIComponent(archivo.name)}`,
         { method: 'POST', body: archivo }

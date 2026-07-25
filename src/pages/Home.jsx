@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import Modal from '../components/Modal.jsx'
 import CargandoTijera from '../components/CargandoTijera.jsx'
+import LikesComentarios from '../components/LikesComentarios.jsx'
 import PremiosProgreso from '../components/PremiosProgreso.jsx'
 
 function Estrellas({ valor, tamano = 16 }) {
@@ -319,6 +320,7 @@ function Home() {
                     {f.descripcion}
                   </p>
                 )}
+                <LikesComentarios tipo="trabajo" itemId={f.id} />
               </div>
             ))}
           </div>

@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { ImagePlus, ArrowLeft } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import CargandoTijera from '../components/CargandoTijera.jsx'
+import { convertirSiHeic } from '../lib/imagenes.js'
 
 function BarberoPerfil() {
   const { barbero, cargando: cargandoAuth } = useAuth()
@@ -42,10 +43,11 @@ function BarberoPerfil() {
   }, [barbero])
 
   const subirFotoPerfil = async (e) => {
-    const archivo = e.target.files[0]
-    if (!archivo) return
+    const archivoOriginal = e.target.files[0]
+    if (!archivoOriginal) return
     setSubiendoPerfil(true)
     try {
+      const archivo = await convertirSiHeic(archivoOriginal)
       const resSubida = await fetch(
         `/api/subir-imagen?filename=${encodeURIComponent(archivo.name)}`,
         { method: 'POST', body: archivo }

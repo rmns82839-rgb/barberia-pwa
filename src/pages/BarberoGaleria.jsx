@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext'
 import { hoyColombia } from '../lib/fechas.js'
 import Modal from '../components/Modal.jsx'
 import CargandoTijera from '../components/CargandoTijera.jsx'
+import { convertirSiHeic } from '../lib/imagenes.js'
 
 const chip =
   'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition active:scale-95'
@@ -46,6 +47,7 @@ function BarberoGaleria() {
   const [citasHoy, setCitasHoy] = useState([])
   const [cargandoCitas, setCargandoCitas] = useState(true)
   const [marcandoId, setMarcandoId] = useState(null)
+  const [notificaciones, setNotificaciones] = useState(0)
 
   useEffect(() => {
     if (cargandoAuth) return
@@ -113,6 +115,21 @@ function BarberoGaleria() {
   useEffect(() => {
     cargarCitasHoy()
   }, [barbero])
+
+  useEffect(() => {
+    if (!barbero) return
+    fetch('/api/interacciones?accion=mis-notificaciones')
+      .then((res) => res.json())
+      .then((data) => setNotificaciones(data.total || 0))
+      .catch(() => {})
+  }, [barbero])
+
+  const marcarNotificacionesVistas = async () => {
+    try {
+      await fetch('/api/interacciones?accion=marcar-vistas', { method: 'POST' })
+      setNotificaciones(0)
+    } catch {}
+  }
 
   const marcarAtendida = async (cita_id) => {
     setMarcandoId(cita_id)
@@ -239,10 +256,11 @@ function BarberoGaleria() {
   }
 
   const subirFoto = async (e) => {
-    const archivo = e.target.files[0]
-    if (!archivo) return
+    const archivoOriginal = e.target.files[0]
+    if (!archivoOriginal) return
     setSubiendo(true)
     try {
+      const archivo = await convertirSiHeic(archivoOriginal)
       const resSubida = await fetch(
         `/api/subir-imagen?filename=${encodeURIComponent(archivo.name)}`,
         { method: 'POST', body: archivo }
@@ -323,6 +341,15 @@ function BarberoGaleria() {
       <div className="flex flex-wrap justify-between items-center gap-2 mb-6">
         <h1 className="text-xl font-bold">Mi panel</h1>
         <div className="flex flex-wrap gap-2">
+          {notificaciones > 0 && (
+            <button
+              onClick={marcarNotificacionesVistas}
+              className={`${chip} bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300`}
+            >
+              <Bell size={14} />
+              {notificaciones} {notificaciones === 1 ? 'nueva' : 'nuevas'}
+            </button>
+          )}
           <button
             onClick={() => setModalPassword(true)}
             className={`${chip} bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300`}
