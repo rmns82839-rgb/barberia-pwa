@@ -26,32 +26,27 @@ export default async function handler(req, res) {
         SELECT COUNT(*) FROM reacciones WHERE tipo = ${tipo} AND item_id = ${item_id}
       `
       const comentarios = await sql`
-        SELECT c.id, c.comentario, c.creado_en, cl.nombre AS cliente_nombre
+        SELECT c.id, c.comentario, c.creado_en, c.cliente_id, c.respuesta_a, cl.nombre AS cliente_nombre
         FROM comentarios c
         JOIN clientes cl ON cl.id = c.cliente_id
         WHERE c.tipo = ${tipo} AND c.item_id = ${item_id}
-        ORDER BY c.creado_en DESC
+        ORDER BY c.creado_en ASC
       `
 
       let miLike = false
-      let miComentario = null
       const { cliente } = await verificarSesion(req, res)
       if (cliente) {
         const yaLike = await sql`
           SELECT id FROM reacciones WHERE tipo = ${tipo} AND item_id = ${item_id} AND cliente_id = ${cliente.id}
         `
         miLike = yaLike.length > 0
-        const yaComento = await sql`
-          SELECT comentario FROM comentarios WHERE tipo = ${tipo} AND item_id = ${item_id} AND cliente_id = ${cliente.id}
-        `
-        miComentario = yaComento[0]?.comentario || null
       }
 
       return res.status(200).json({
         total_likes: Number(totalLikes[0].count),
         comentarios,
         mi_like: miLike,
-        mi_comentario: miComentario,
+        mi_cliente_id: cliente?.id || null,
       })
     }
 
@@ -77,7 +72,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ like: true })
     }
 
-    // ---- POST: agregar/editar/borrar mi comentario (uno por cliente por item) ----
+    // ---- POST: agregar un comentario nuevo (ilimitados por cliente; puede ser respuesta a otro) ----
     if (req.method === "POST" && accion === "comentar") {
       const cliente = await requireCliente(req, res)
       if (!cliente) return
@@ -85,20 +80,39 @@ export default async function handler(req, res) {
       const raw = await leerBody(req)
       let data
       try { data = JSON.parse(raw) } catch { return res.status(400).json({ error: "JSON inválido" }) }
-      const { tipo, item_id, comentario } = data
+      const { tipo, item_id, comentario, respuesta_a } = data
       if (!tipo || !item_id) return res.status(400).json({ error: "Faltan tipo o item_id" })
+      if (!comentario || !comentario.trim()) return res.status(400).json({ error: "El comentario no puede estar vacío" })
 
-      if (!comentario || !comentario.trim()) {
-        await sql`DELETE FROM comentarios WHERE tipo = ${tipo} AND item_id = ${item_id} AND cliente_id = ${cliente.id}`
-        return res.status(200).json({ ok: true, borrado: true })
+      // Si es respuesta, confirma que el comentario padre pertenece al mismo item
+      if (respuesta_a) {
+        const padre = await sql`SELECT id FROM comentarios WHERE id = ${respuesta_a} AND tipo = ${tipo} AND item_id = ${item_id}`
+        if (padre.length === 0) return res.status(400).json({ error: "El comentario al que respondes no existe" })
       }
 
-      await sql`
-        INSERT INTO comentarios (tipo, item_id, cliente_id, comentario)
-        VALUES (${tipo}, ${item_id}, ${cliente.id}, ${comentario.trim()})
-        ON CONFLICT (tipo, item_id, cliente_id)
-        DO UPDATE SET comentario = ${comentario.trim()}, creado_en = NOW()
+      const nuevo = await sql`
+        INSERT INTO comentarios (tipo, item_id, cliente_id, comentario, respuesta_a)
+        VALUES (${tipo}, ${item_id}, ${cliente.id}, ${comentario.trim()}, ${respuesta_a || null})
+        RETURNING id, comentario, creado_en, cliente_id, respuesta_a
       `
+      return res.status(201).json({ comentario: { ...nuevo[0], cliente_nombre: cliente.nombre } })
+    }
+
+    // ---- DELETE: borrar mi propio comentario (borra también sus respuestas, por cascada) ----
+    if (req.method === "POST" && accion === "comentario-borrar") {
+      const cliente = await requireCliente(req, res)
+      if (!cliente) return
+
+      const raw = await leerBody(req)
+      let data
+      try { data = JSON.parse(raw) } catch { return res.status(400).json({ error: "JSON inválido" }) }
+      const { id } = data
+      if (!id) return res.status(400).json({ error: "Falta id" })
+
+      const resultado = await sql`
+        DELETE FROM comentarios WHERE id = ${id} AND cliente_id = ${cliente.id} RETURNING id
+      `
+      if (resultado.length === 0) return res.status(404).json({ error: "Comentario no encontrado o no te pertenece" })
       return res.status(200).json({ ok: true })
     }
 
