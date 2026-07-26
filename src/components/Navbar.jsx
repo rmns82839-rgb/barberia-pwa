@@ -17,6 +17,14 @@ function Navbar() {
   const [abierto, setAbierto] = useState(false)
   const [tema, setTema] = useState('claro')
   const { puedeInstalar, instalar } = useInstalarPWA()
+  const [negocio, setNegocio] = useState(null)
+
+  useEffect(() => {
+    fetch('/api/negocio')
+      .then((res) => res.json())
+      .then((data) => setNegocio(data.negocio))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     setTema(obtenerTema())
@@ -32,8 +40,24 @@ function Navbar() {
     <nav className="sticky top-0 z-40 bg-gray-900/90 dark:bg-gray-950/90 backdrop-blur text-white px-4 py-3 shadow-md">
       <div className="max-w-4xl mx-auto flex justify-between items-center">
         <Link to="/" className="flex items-center gap-2 font-bold text-lg">
-          <Scissors size={20} />
-          Barbería
+          {negocio?.logo_url ? (
+            <motion.img
+              src={negocio.logo_url}
+              alt={negocio.nombre}
+              className="w-7 h-7 rounded-full object-cover"
+              animate={{
+                boxShadow: [
+                  '0 0 0px rgba(251,191,36,0.4)',
+                  '0 0 8px rgba(251,191,36,0.7)',
+                  '0 0 0px rgba(251,191,36,0.4)',
+                ],
+              }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+            />
+          ) : (
+            <Scissors size={20} />
+          )}
+          {negocio?.nombre || 'Barbería'}
         </Link>
 
         {/* Bento de links con indicador que se desliza — solo en pantallas medianas en adelante */}

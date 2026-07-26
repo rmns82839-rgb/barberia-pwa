@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 import { Scissors, Star, MessageSquarePlus, Images, MessageCircle, MapPin } from 'lucide-react'
 import { IconoWhatsApp, IconoInstagram, IconoFacebook, IconoTikTok, IconoYouTube } from '../components/IconosRedes.jsx'
@@ -142,10 +143,19 @@ function Home() {
     <div className="p-4 sm:p-6 max-w-3xl mx-auto">
       <div className="flex flex-col items-center text-center mb-4">
         {negocio?.logo_url && (
-          <img
+          <motion.img
             src={negocio.logo_url}
             alt={negocio.nombre}
-            className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover shadow-md mb-3"
+            className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover mb-3"
+            animate={{
+              boxShadow: [
+                '0 0 0px rgba(251,191,36,0.3)',
+                '0 0 22px rgba(251,191,36,0.55)',
+                '0 0 0px rgba(251,191,36,0.3)',
+              ],
+              scale: [1, 1.03, 1],
+            }}
+            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
           />
         )}
         <h1 className="text-2xl font-bold">

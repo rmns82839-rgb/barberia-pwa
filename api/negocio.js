@@ -1,6 +1,7 @@
 import { neon } from "@neondatabase/serverless"
 import dotenv from "dotenv"
 import { requireAdmin } from "./_middleware.js"
+import { borrarBlob } from "./_db.js"
 
 dotenv.config({ path: ".env.local" })
 
@@ -64,6 +65,15 @@ export default async function handler(req, res) {
           whatsapp = EXCLUDED.whatsapp,
           youtube = EXCLUDED.youtube
       `
+
+      // Borra logo/foto de ubicación anteriores si fueron reemplazados
+      if (base.logo_url && base.logo_url !== merged.logo_url) {
+        await borrarBlob(base.logo_url)
+      }
+      if (base.foto_ubicacion_url && base.foto_ubicacion_url !== merged.foto_ubicacion_url) {
+        await borrarBlob(base.foto_ubicacion_url)
+      }
+
       return res.status(200).json({ ok: true, negocio: merged })
     }
 

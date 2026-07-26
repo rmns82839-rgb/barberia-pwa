@@ -29,7 +29,6 @@ export default function PremiosProgreso() {
 
   const disponibles = premios.filter((p) => contador >= p.cortes_requeridos)
   const siguiente = premios.find((p) => contador < p.cortes_requeridos)
-  const totalPremios = premios.length
   const progreso = siguiente ? contador / siguiente.cortes_requeridos : 1
 
   return (
@@ -39,51 +38,51 @@ export default function PremiosProgreso() {
         onClick={() => setExpandido(!expandido)}
         className="w-full flex items-center justify-between gap-3 text-left"
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           <motion.div
-            animate={{ 
+            animate={{
               rotate: [0, -10, 10, -5, 5, 0],
-              scale: [1, 1.1, 1]
+              scale: [1, 1.1, 1],
             }}
-            transition={{ 
-              duration: 2.5, 
-              repeat: Infinity, 
+            transition={{
+              duration: 2.5,
+              repeat: Infinity,
               repeatDelay: 1.5,
-              ease: 'easeInOut' 
+              ease: 'easeInOut',
             }}
             className="shrink-0"
           >
             <Gift size={24} className="text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]" />
           </motion.div>
-          
-          <div className="flex flex-col">
+
+          <div className="flex flex-col min-w-0">
             <h2 className="text-sm font-bold bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 bg-clip-text text-transparent">
               TUS PREMIOS
             </h2>
-            <p className="text-[10px] text-blue-200/80">
+            <p className="text-[11px] text-blue-100 truncate">
               Llevas <span className="text-amber-300 font-bold">{contador}</span> {contador === 1 ? 'corte' : 'cortes'} desde tu último premio
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2.5 shrink-0">
           {/* Barra de progreso mini */}
-          <div className="w-16 h-1.5 bg-blue-800/50 rounded-full overflow-hidden">
+          <div className="w-14 h-1.5 bg-blue-800/60 rounded-full overflow-hidden hidden xs:block">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${Math.min(progreso * 100, 100)}%` }}
               className="h-full bg-gradient-to-r from-amber-400 to-yellow-400 rounded-full"
             />
           </div>
-          
-          <span className="text-[10px] font-medium text-amber-300 min-w-[24px]">
-            {siguiente ? `${contador}/${siguiente.cortes_requeridos}` : '¡Completado!'}
+
+          <span className="text-[11px] font-semibold text-amber-300 whitespace-nowrap">
+            {siguiente ? `${contador}/${siguiente.cortes_requeridos}` : '¡Completo!'}
           </span>
 
           {expandido ? (
-            <ChevronUp size={16} className="text-blue-300" />
+            <ChevronUp size={16} className="text-blue-200" />
           ) : (
-            <ChevronDown size={16} className="text-blue-300" />
+            <ChevronDown size={16} className="text-blue-200" />
           )}
         </div>
       </button>
@@ -105,15 +104,19 @@ export default function PremiosProgreso() {
                   {disponibles.map((p) => (
                     <motion.div
                       key={p.id}
-                      animate={{ 
-                        boxShadow: ['0 0 0px rgba(251,191,36,0)', '0 0 12px rgba(251,191,36,0.3)', '0 0 0px rgba(251,191,36,0)'] 
+                      animate={{
+                        boxShadow: [
+                          '0 0 0px rgba(251,191,36,0)',
+                          '0 0 12px rgba(251,191,36,0.35)',
+                          '0 0 0px rgba(251,191,36,0)',
+                        ],
                       }}
                       transition={{ duration: 2, repeat: Infinity }}
-                      className="bg-gradient-to-r from-amber-500/20 to-amber-400/10 border border-amber-400/30 rounded-lg p-2 flex items-center gap-2"
+                      className="bg-gradient-to-r from-amber-500/25 to-amber-400/10 border border-amber-400/40 rounded-lg p-2 flex items-center gap-2"
                     >
                       <Gift size={14} className="text-amber-400 shrink-0" />
-                      <p className="text-xs text-amber-100">
-                        <span className="text-amber-300 font-medium">¡Disponible!</span> {p.descripcion}
+                      <p className="text-xs text-amber-50">
+                        <span className="text-amber-300 font-semibold">¡Disponible!</span> {p.descripcion}
                       </p>
                     </motion.div>
                   ))}
@@ -122,31 +125,31 @@ export default function PremiosProgreso() {
 
               {/* Próximo premio */}
               {siguiente && (
-                <div className="flex items-center justify-between gap-2 text-xs text-blue-200/80 bg-blue-800/20 rounded-lg p-2">
-                  <div className="flex items-center gap-1.5">
-                    <Scissors size={13} className="text-amber-300" />
-                    <span>Próximo premio:</span>
-                    <span className="text-amber-300 font-medium">{siguiente.descripcion}</span>
+                <div className="flex items-center justify-between gap-2 text-xs text-blue-100 bg-blue-800/30 rounded-lg p-2">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <Scissors size={13} className="text-amber-300 shrink-0" />
+                    <span className="shrink-0">Próximo premio:</span>
+                    <span className="text-amber-300 font-medium truncate">{siguiente.descripcion}</span>
                   </div>
-                  <span className="text-amber-300 font-bold">
+                  <span className="text-amber-300 font-bold shrink-0">
                     {contador}/{siguiente.cortes_requeridos}
                   </span>
                 </div>
               )}
 
               {/* Lista de todos los premios */}
-              <div className="text-[10px] text-blue-300/60 mt-1">
-                {premios.map((p, idx) => (
-                  <div key={p.id} className="flex items-center justify-between py-0.5">
-                    <span className="flex items-center gap-1.5">
+              <div className="text-[11px] text-blue-200/90">
+                {premios.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between py-0.5 gap-2">
+                    <span className="flex items-center gap-1.5 min-w-0">
                       {contador >= p.cortes_requeridos ? (
-                        <span className="text-amber-400">✓</span>
+                        <span className="text-amber-400 shrink-0">✓</span>
                       ) : (
-                        <span className="text-blue-500">○</span>
+                        <span className="text-blue-400 shrink-0">○</span>
                       )}
-                      {p.descripcion}
+                      <span className="truncate">{p.descripcion}</span>
                     </span>
-                    <span className="text-blue-400/60">{p.cortes_requeridos} cortes</span>
+                    <span className="text-blue-300/80 shrink-0">{p.cortes_requeridos} cortes</span>
                   </div>
                 ))}
               </div>

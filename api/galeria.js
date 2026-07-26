@@ -1,4 +1,4 @@
-import { getDb, leerBody, parseJSON, responseError, responseSuccess } from './_db.js'
+import { getDb, leerBody, parseJSON, responseError, responseSuccess, borrarBlob } from './_db.js'
 import { requireBarbero } from './_middleware.js'
 
 export default async function handler(req, res) {
@@ -50,7 +50,14 @@ export default async function handler(req, res) {
     const { imagen_url, nombre, alias, especialidad, whatsapp } = data
 
     if (imagen_url) {
+      const actualFoto = await sql`SELECT foto FROM barberos WHERE id = ${barbero.id}`
+      const fotoAnterior = actualFoto[0]?.foto
+
       await sql`UPDATE barberos SET foto = ${imagen_url} WHERE id = ${barbero.id}`
+
+      if (fotoAnterior && fotoAnterior !== imagen_url) {
+        await borrarBlob(fotoAnterior)
+      }
     }
     if (nombre !== undefined || alias !== undefined || especialidad !== undefined || whatsapp !== undefined) {
       const actual = await sql`SELECT nombre, alias, especialidad, whatsapp FROM barberos WHERE id = ${barbero.id}`
@@ -86,9 +93,12 @@ export default async function handler(req, res) {
     const result = await sql`
       DELETE FROM galeria_trabajos
       WHERE id = ${id} AND barbero_id = ${barbero.id}
-      RETURNING id
+      RETURNING id, imagen_url
     `
     if (result.length === 0) return responseError(res, 'Foto no encontrada o no te pertenece', 404)
+
+    await borrarBlob(result[0].imagen_url)
+
     return responseSuccess(res, { ok: true })
   }
 

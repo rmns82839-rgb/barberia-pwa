@@ -1,4 +1,4 @@
-import { getDb, leerBody, parseJSON, responseError, responseSuccess } from './_db.js'
+import { getDb, leerBody, parseJSON, responseError, responseSuccess, borrarBlob } from './_db.js'
 import { requireAdmin } from './_middleware.js'
 import { scryptSync, randomBytes } from 'crypto'
 
@@ -74,6 +74,9 @@ export default async function handler(req, res) {
       const { id, nombre, descripcion, precio, imagen_url, categoria_id } = data
       if (!id) return responseError(res, 'Falta id')
 
+      const actual = await sql`SELECT imagen_url FROM productos WHERE id = ${id}`
+      const fotoAnterior = actual[0]?.imagen_url
+
       const editado = await sql`
         UPDATE productos
         SET nombre = ${nombre},
@@ -87,6 +90,11 @@ export default async function handler(req, res) {
       if (editado.length === 0) {
         return responseError(res, 'Producto no encontrado', 404)
       }
+
+      if (fotoAnterior && fotoAnterior !== imagen_url) {
+        await borrarBlob(fotoAnterior)
+      }
+
       return responseSuccess(res, { producto: editado[0] })
     }
 
@@ -101,10 +109,19 @@ export default async function handler(req, res) {
       const { id } = data
       if (!id) return responseError(res, 'Falta id')
 
+      const producto = await sql`SELECT imagen_url FROM productos WHERE id = ${id}`
+      const imagenesExtra = await sql`SELECT imagen_url FROM producto_imagenes WHERE producto_id = ${id}`
+
       const result = await sql`DELETE FROM productos WHERE id = ${id} RETURNING id`
       if (result.length === 0) {
         return responseError(res, 'Producto no encontrado', 404)
       }
+
+      if (producto[0]?.imagen_url) await borrarBlob(producto[0].imagen_url)
+      for (const img of imagenesExtra) {
+        await borrarBlob(img.imagen_url)
+      }
+
       return responseSuccess(res, { ok: true })
     }
 
@@ -341,6 +358,11 @@ export default async function handler(req, res) {
         WHERE id = ${id}
         RETURNING id, nombre, orden, foto_url, descripcion
       `
+
+      if (base.foto_url && foto_url !== undefined && base.foto_url !== foto_url) {
+        await borrarBlob(base.foto_url)
+      }
+
       return responseSuccess(res, { categoria: editada[0] })
     }
 
@@ -352,10 +374,15 @@ export default async function handler(req, res) {
       const { id } = data
       if (!id) return responseError(res, 'Falta id')
 
+      const categoria = await sql`SELECT foto_url FROM categorias WHERE id = ${id}`
+
       // Los productos de esa categoría quedan sin categoría (no se borran)
       await sql`UPDATE productos SET categoria_id = NULL WHERE categoria_id = ${id}`
       const result = await sql`DELETE FROM categorias WHERE id = ${id} RETURNING id`
       if (result.length === 0) return responseError(res, 'Categoría no encontrada', 404)
+
+      if (categoria[0]?.foto_url) await borrarBlob(categoria[0].foto_url)
+
       return responseSuccess(res, { ok: true })
     }
 
@@ -401,8 +428,11 @@ export default async function handler(req, res) {
       const { id } = data
       if (!id) return responseError(res, 'Falta id')
 
-      const result = await sql`DELETE FROM producto_imagenes WHERE id = ${id} RETURNING id`
+      const result = await sql`DELETE FROM producto_imagenes WHERE id = ${id} RETURNING id, imagen_url`
       if (result.length === 0) return responseError(res, 'No encontrada', 404)
+
+      await borrarBlob(result[0].imagen_url)
+
       return responseSuccess(res, { ok: true })
     }
 
