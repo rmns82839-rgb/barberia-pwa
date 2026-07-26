@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { SprayCan, ChevronRight, MapPin } from 'lucide-react'
-import { IconoWhatsApp, IconoInstagram, IconoFacebook, IconoTikTok, IconoYouTube } from '../components/IconosRedes.jsx'
+import { IconoInstagram, IconoFacebook, IconoTikTok, IconoYouTube } from '../components/IconosRedes.jsx'
 
 function Catalogo() {
   const [categorias, setCategorias] = useState([])
@@ -106,18 +106,6 @@ function Catalogo() {
             >
               <MapPin size={14} />
               Cómo llegar
-            </a>
-          )}
-
-          {negocio.whatsapp && (
-            <a
-              href={`https://wa.me/57${negocio.whatsapp}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 mb-3 bg-green-600 text-white text-sm font-medium px-4 py-2 rounded-full"
-            >
-              <IconoWhatsApp size={14} />
-              Escríbenos por WhatsApp
             </a>
           )}
 

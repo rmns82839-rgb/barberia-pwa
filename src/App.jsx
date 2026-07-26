@@ -24,6 +24,8 @@ import EstilosDeCorte from './pages/EstilosDeCorte.jsx'
 import BarberoEstilos from './pages/BarberoEstilos.jsx'
 import AdminEstilos from './pages/AdminEstilos.jsx'
 import InstalarPWA from './components/InstalarPWA.jsx'
+import WhatsAppFlotante from './components/WhatsAppFlotante.jsx'
+import ActualizacionApp from './components/ActualizacionApp.jsx'
 import { InstalarPWAProvider } from './context/InstalarPWAContext.jsx'
 import { obtenerTema, aplicarTema } from './lib/tema.js'
 
@@ -42,7 +44,7 @@ function App() {
 
   return (
     <InstalarPWAProvider>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 dark:text-gray-100 transition-colors">
+      <div className="min-h-screen bg-[#fbf5ea] dark:bg-gray-950 dark:text-gray-100 transition-colors">
         <Navbar />
       <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>
@@ -70,6 +72,8 @@ function App() {
         </Routes>
       </AnimatePresence>
         <InstalarPWA />
+        <WhatsAppFlotante />
+        <ActualizacionApp />
       </div>
     </InstalarPWAProvider>
   )

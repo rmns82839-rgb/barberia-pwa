@@ -140,8 +140,12 @@ function Home() {
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-3xl mx-auto">
-      <div className="flex flex-col items-center text-center mb-4">
+    <div className="relative p-4 sm:p-6 max-w-3xl mx-auto overflow-hidden">
+      {/* Resplandores decorativos de fondo — dan textura real al efecto vidrio de los botones */}
+      <div className="pointer-events-none absolute -top-10 -right-16 w-56 h-56 rounded-full bg-amber-300/40 dark:bg-amber-500/10 blur-3xl" />
+      <div className="pointer-events-none absolute top-40 -left-20 w-64 h-64 rounded-full bg-amber-200/40 dark:bg-amber-600/10 blur-3xl" />
+
+      <div className="relative flex flex-col items-center text-center mb-4">
         {negocio?.logo_url && (
           <motion.img
             src={negocio.logo_url}
@@ -172,27 +176,35 @@ function Home() {
         )}
       </div>
 
-      <p className="text-gray-600 dark:text-gray-400 text-center mb-4">
+      <p className="relative text-gray-600 dark:text-gray-400 text-center mb-4">
         Agenda tu cita, revisa el catálogo de productos y más.
       </p>
 
-      <button
-        onClick={() => navigate('/login')}
-        className="w-full mb-3 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-xl px-4 py-3.5 font-semibold shadow-md transition active:scale-95"
-      >
-        ✂️ Aparta tu cita ahora
-      </button>
+      <div className="relative grid grid-cols-2 gap-2 mb-6">
+        <button
+          onClick={() => navigate('/login')}
+          className="flex items-center justify-center gap-1.5 backdrop-blur-lg bg-amber-400/20 dark:bg-amber-400/10 border border-amber-400/60 text-amber-800 dark:text-amber-300 rounded-xl px-3 py-2.5 text-sm font-semibold shadow-sm shadow-amber-500/20 transition active:scale-95"
+        >
+          <Scissors size={14} />
+          Aparta tu cita
+        </button>
 
-      <button
-        onClick={() => navigate('/estilos')}
-        className="w-full mb-6 bg-gray-900 dark:bg-gray-800 text-white rounded-xl px-4 py-3 font-medium transition active:scale-95 border border-amber-500/30"
-      >
-        📸 Ver estilos de corte
-      </button>
+        <button
+          onClick={() => navigate('/estilos')}
+          className="flex items-center justify-center gap-1.5 backdrop-blur-lg bg-white/40 dark:bg-gray-100/10 border border-gray-400/40 dark:border-gray-500/30 text-gray-700 dark:text-gray-300 rounded-xl px-3 py-2.5 text-sm font-medium shadow-sm transition active:scale-95"
+        >
+          <Images size={14} />
+          Ver estilos
+        </button>
+      </div>
 
-      <PremiosProgreso />
+      <div className="relative">
+        <PremiosProgreso />
 
-      <h2 className="text-lg font-semibold mb-3">Nuestros barberos</h2>
+        <h2 className="relative text-lg font-semibold mb-3 flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+          Nuestros barberos
+        </h2>
 
       {cargando && (
         <div className="grid grid-cols-2 gap-4">
@@ -227,12 +239,17 @@ function Home() {
                   {barbero.especialidad || '\u00A0'}
                 </p>
                 <span
-                  className={`mt-1.5 text-xs px-2 py-0.5 rounded-full ${
+                  className={`mt-1.5 inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${
                     barbero.estado === 'disponible'
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-red-100 text-red-700'
+                      ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
+                      : 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
                   }`}
                 >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      barbero.estado === 'disponible' ? 'bg-emerald-500' : 'bg-amber-500'
+                    }`}
+                  />
                   {barbero.estado === 'disponible' ? 'Disponible' : 'Ocupado'}
                 </span>
 
@@ -247,46 +264,50 @@ function Home() {
                   <p className="mt-1.5 text-xs text-gray-400 dark:text-gray-500">Sin reseñas todavía</p>
                 )}
 
-                <div className="grid grid-cols-2 gap-1.5 w-full mt-auto pt-2.5">
-                  <button
+                <div className="flex items-center justify-around w-full mt-auto pt-2.5 border-t border-amber-500/10">
+                  <motion.button
                     onClick={() => abrirGaleria(barbero.id)}
-                    className="flex flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-medium bg-gray-900 dark:bg-gray-700 text-white transition active:scale-95"
+                    whileTap={{ scale: 0.8 }}
+                    aria-label="Ver trabajos"
+                    className="text-amber-500 dark:text-amber-400"
                   >
-                    <Images size={14} />
-                    <span>Trabajos</span>
-                  </button>
+                    <Images size={20} />
+                  </motion.button>
 
-                  <button
+                  <motion.button
                     onClick={() => setModalVerResenas(barbero.id)}
-                    className="flex flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-medium bg-gray-900 dark:bg-gray-700 text-white transition active:scale-95"
+                    whileTap={{ scale: 0.8 }}
+                    aria-label="Ver reseñas"
+                    className="text-amber-500 dark:text-amber-400"
                   >
-                    <MessageCircle size={14} />
-                    <span>Reseñas</span>
-                  </button>
+                    <MessageCircle size={20} />
+                  </motion.button>
+
+                  <motion.button
+                    onClick={() => abrirModalResena(barbero.id)}
+                    whileTap={{ scale: 0.8 }}
+                    aria-label="Dejar reseña"
+                    className="text-amber-500 dark:text-amber-400"
+                  >
+                    <MessageSquarePlus size={20} />
+                  </motion.button>
                 </div>
 
                 {barbero.whatsapp && (
                   <button
                     onClick={() => window.open(`https://wa.me/57${barbero.whatsapp}`, '_blank')}
-                    className="flex items-center justify-center gap-1.5 w-full mt-1.5 rounded-lg px-2 py-1.5 text-[10px] font-medium bg-green-600 text-white transition active:scale-95"
+                    className="flex items-center justify-center gap-1.5 w-full mt-2 rounded-lg px-2 py-1.5 text-[10px] font-medium bg-green-600 text-white ring-1 ring-amber-400/60 transition active:scale-95"
                   >
                     <IconoWhatsApp size={14} />
                     <span>WhatsApp</span>
                   </button>
                 )}
-
-                <button
-                  onClick={() => abrirModalResena(barbero.id)}
-                  className="w-full mt-1.5 flex flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-medium bg-gradient-to-r from-amber-500 to-red-700 text-white transition active:scale-95"
-                >
-                  <MessageSquarePlus size={14} />
-                  <span>Dejar reseña</span>
-                </button>
               </div>
             )
           })}
         </div>
       )}
+      </div>
 
       <Modal
         open={modalResena != null}
@@ -371,11 +392,17 @@ function Home() {
       {negocio && (negocio.direccion || negocio.instagram || negocio.facebook || negocio.tiktok || negocio.youtube || negocio.whatsapp || negocio.foto_ubicacion_url) && (
         <div className="mt-10 pt-6 border-t dark:border-gray-700 text-center">
           {negocio.foto_ubicacion_url && (
-            <img
-              src={negocio.foto_ubicacion_url}
-              alt="Nuestra ubicación"
-              className="w-full h-40 object-cover rounded-xl mb-4"
-            />
+            <>
+              <h2 className="text-lg font-semibold mb-3 flex items-center justify-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                Nuestro espacio
+              </h2>
+              <img
+                src={negocio.foto_ubicacion_url}
+                alt="Nuestra ubicación"
+                className="w-full h-40 object-cover rounded-xl mb-4 shadow-md ring-1 ring-amber-500/20"
+              />
+            </>
           )}
 
           {negocio.direccion && (
@@ -394,18 +421,6 @@ function Home() {
             >
               <MapPin size={14} />
               Cómo llegar
-            </a>
-          )}
-
-          {negocio.whatsapp && (
-            <a
-              href={`https://wa.me/57${negocio.whatsapp}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 mb-3 bg-green-600 text-white text-sm font-medium px-4 py-2 rounded-full"
-            >
-              <IconoWhatsApp size={14} />
-              Escríbenos por WhatsApp
             </a>
           )}
 

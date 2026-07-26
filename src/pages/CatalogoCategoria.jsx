@@ -6,7 +6,7 @@ import { SprayCan, ShoppingCart, Plus, Minus, Trash2, MessageCircle, ArrowLeft, 
 import Modal from '../components/Modal.jsx'
 import Carrusel from '../components/Carrusel.jsx'
 import LikesComentarios from '../components/LikesComentarios.jsx'
-import { IconoWhatsApp, IconoInstagram, IconoFacebook, IconoTikTok, IconoYouTube } from '../components/IconosRedes.jsx'
+import { IconoInstagram, IconoFacebook, IconoTikTok, IconoYouTube } from '../components/IconosRedes.jsx'
 
 const WHATSAPP_BARBERIA = '3054494534'
 const CLAVE_CARRITO = 'carrito-barberia'
@@ -320,18 +320,6 @@ function CatalogoCategoria() {
             >
               <MapPin size={14} />
               Cómo llegar
-            </a>
-          )}
-
-          {negocio.whatsapp && (
-            <a
-              href={`https://wa.me/57${negocio.whatsapp}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 mb-3 bg-green-600 text-white text-sm font-medium px-4 py-2 rounded-full"
-            >
-              <IconoWhatsApp size={14} />
-              Escríbenos por WhatsApp
             </a>
           )}
 
