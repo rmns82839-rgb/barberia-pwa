@@ -102,7 +102,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true })
     }
 
-    // ---- GET: contador de interacciones nuevas en el portafolio del barbero ----
+    // ---- GET: contador + detalle de interacciones nuevas en el portafolio del barbero ----
     if (req.method === "GET" && accion === "mis-notificaciones") {
       const barbero = await requireBarbero(req, res)
       if (!barbero) return
@@ -121,8 +121,31 @@ export default async function handler(req, res) {
         WHERE c.tipo = 'trabajo' AND g.barbero_id = ${barbero.id} AND c.creado_en > ${desde}
       `
 
+      const detalle = await sql`
+        SELECT * FROM (
+          SELECT 'like' AS tipo_evento, g.id AS trabajo_id, g.imagen_url, g.descripcion AS trabajo_descripcion,
+                 cl.nombre AS cliente_nombre, NULL AS comentario, r.creado_en
+          FROM reacciones r
+          JOIN galeria_trabajos g ON g.id = r.item_id
+          JOIN clientes cl ON cl.id = r.cliente_id
+          WHERE r.tipo = 'trabajo' AND g.barbero_id = ${barbero.id} AND r.creado_en > ${desde}
+
+          UNION ALL
+
+          SELECT 'comentario' AS tipo_evento, g.id, g.imagen_url, g.descripcion,
+                 cl.nombre, c.comentario, c.creado_en
+          FROM comentarios c
+          JOIN galeria_trabajos g ON g.id = c.item_id
+          JOIN clientes cl ON cl.id = c.cliente_id
+          WHERE c.tipo = 'trabajo' AND g.barbero_id = ${barbero.id} AND c.creado_en > ${desde}
+        ) eventos
+        ORDER BY creado_en DESC
+        LIMIT 30
+      `
+
       return res.status(200).json({
         total: Number(likes[0].count) + Number(comentarios[0].count),
+        detalle,
       })
     }
 

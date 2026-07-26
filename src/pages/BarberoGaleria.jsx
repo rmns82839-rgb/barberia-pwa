@@ -48,6 +48,8 @@ function BarberoGaleria() {
   const [cargandoCitas, setCargandoCitas] = useState(true)
   const [marcandoId, setMarcandoId] = useState(null)
   const [notificaciones, setNotificaciones] = useState(0)
+  const [detalleNotificaciones, setDetalleNotificaciones] = useState([])
+  const [modalNotificaciones, setModalNotificaciones] = useState(false)
 
   useEffect(() => {
     if (cargandoAuth) return
@@ -120,11 +122,15 @@ function BarberoGaleria() {
     if (!barbero) return
     fetch('/api/interacciones?accion=mis-notificaciones')
       .then((res) => res.json())
-      .then((data) => setNotificaciones(data.total || 0))
+      .then((data) => {
+        setNotificaciones(data.total || 0)
+        setDetalleNotificaciones(data.detalle || [])
+      })
       .catch(() => {})
   }, [barbero])
 
-  const marcarNotificacionesVistas = async () => {
+  const abrirNotificaciones = async () => {
+    setModalNotificaciones(true)
     try {
       await fetch('/api/interacciones?accion=marcar-vistas', { method: 'POST' })
       setNotificaciones(0)
@@ -343,7 +349,7 @@ function BarberoGaleria() {
         <div className="flex flex-wrap gap-2">
           {notificaciones > 0 && (
             <button
-              onClick={marcarNotificacionesVistas}
+              onClick={abrirNotificaciones}
               className={`${chip} bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300`}
             >
               <Bell size={14} />
@@ -697,6 +703,39 @@ function BarberoGaleria() {
             Cancelar
           </button>
         </div>
+      </Modal>
+
+      <Modal open={modalNotificaciones} onClose={() => setModalNotificaciones(false)} title="Novedades en tu portafolio">
+        {detalleNotificaciones.length === 0 ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400">No hay novedades todavía.</p>
+        ) : (
+          <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+            {detalleNotificaciones.map((n, i) => (
+              <div key={i} className="flex items-start gap-3">
+                <div className="w-12 h-12 rounded-lg bg-gray-100 dark:bg-gray-700 overflow-hidden shrink-0">
+                  {n.imagen_url && (
+                    <img src={n.imagen_url} alt="" className="w-full h-full object-cover" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  {n.tipo_evento === 'like' ? (
+                    <p className="text-sm">
+                      <strong>{n.cliente_nombre}</strong> le dio ❤️ a tu foto
+                      {n.trabajo_descripcion && <> ({n.trabajo_descripcion})</>}
+                    </p>
+                  ) : (
+                    <p className="text-sm">
+                      <strong>{n.cliente_nombre}</strong> comentó: <span className="italic">"{n.comentario}"</span>
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                    {new Date(n.creado_en).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' })}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </Modal>
 
       <Modal open={modalPassword} onClose={() => setModalPassword(false)} title="Cambiar contraseña">
