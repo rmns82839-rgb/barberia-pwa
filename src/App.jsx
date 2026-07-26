@@ -20,6 +20,9 @@ import AdminPremios from './pages/AdminPremios.jsx'
 import CatalogoCategoria from './pages/CatalogoCategoria.jsx'
 import BarberoPerfil from './pages/BarberoPerfil.jsx'
 import Registro from './pages/Registro.jsx'
+import EstilosDeCorte from './pages/EstilosDeCorte.jsx'
+import BarberoEstilos from './pages/BarberoEstilos.jsx'
+import AdminEstilos from './pages/AdminEstilos.jsx'
 import InstalarPWA from './components/InstalarPWA.jsx'
 import { InstalarPWAProvider } from './context/InstalarPWAContext.jsx'
 import { obtenerTema, aplicarTema } from './lib/tema.js'
@@ -61,6 +64,9 @@ function App() {
           <Route path="/catalogo/:categoriaId" element={<PaginaAnimada><CatalogoCategoria /></PaginaAnimada>} />
           <Route path="/barbero-perfil" element={<PaginaAnimada><BarberoPerfil /></PaginaAnimada>} />
           <Route path="/registro" element={<PaginaAnimada><Registro /></PaginaAnimada>} />
+          <Route path="/estilos" element={<PaginaAnimada><EstilosDeCorte /></PaginaAnimada>} />
+          <Route path="/barbero-estilos" element={<PaginaAnimada><BarberoEstilos /></PaginaAnimada>} />
+          <Route path="/admin-estilos" element={<PaginaAnimada><AdminEstilos /></PaginaAnimada>} />
         </Routes>
       </AnimatePresence>
         <InstalarPWA />

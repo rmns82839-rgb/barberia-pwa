@@ -178,9 +178,16 @@ function Home() {
 
       <button
         onClick={() => navigate('/login')}
-        className="w-full mb-6 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-xl px-4 py-3.5 font-semibold shadow-md transition active:scale-95"
+        className="w-full mb-3 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-xl px-4 py-3.5 font-semibold shadow-md transition active:scale-95"
       >
         ✂️ Aparta tu cita ahora
+      </button>
+
+      <button
+        onClick={() => navigate('/estilos')}
+        className="w-full mb-6 bg-gray-900 dark:bg-gray-800 text-white rounded-xl px-4 py-3 font-medium transition active:scale-95 border border-amber-500/30"
+      >
+        📸 Ver estilos de corte
       </button>
 
       <PremiosProgreso />
@@ -404,49 +411,33 @@ function Home() {
 
           {(negocio.instagram || negocio.facebook || negocio.tiktok || negocio.youtube) && (
             <div className="flex items-center justify-center gap-2">
-              {negocio.instagram && (
-                <a
-                  href={negocio.instagram}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="Instagram"
-                  className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 text-white transition active:scale-95"
-                >
-                  <IconoInstagram size={18} />
-                </a>
-              )}
-              {negocio.facebook && (
-                <a
-                  href={negocio.facebook}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="Facebook"
-                  className="flex items-center justify-center w-9 h-9 rounded-full bg-blue-600 text-white transition active:scale-95"
-                >
-                  <IconoFacebook size={18} />
-                </a>
-              )}
-              {negocio.tiktok && (
-                <a
-                  href={negocio.tiktok}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="TikTok"
-                  className="flex items-center justify-center w-9 h-9 rounded-full bg-gray-900 dark:bg-gray-700 text-white transition active:scale-95"
-                >
-                  <IconoTikTok size={18} />
-                </a>
-              )}
-              {negocio.youtube && (
-                <a
-                  href={negocio.youtube}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="YouTube"
-                  className="flex items-center justify-center w-9 h-9 rounded-full bg-red-600 text-white transition active:scale-95"
-                >
-                  <IconoYouTube size={18} />
-                </a>
+              {[
+                { url: negocio.instagram, label: 'Instagram', Icono: IconoInstagram },
+                { url: negocio.facebook, label: 'Facebook', Icono: IconoFacebook },
+                { url: negocio.tiktok, label: 'TikTok', Icono: IconoTikTok },
+                { url: negocio.youtube, label: 'YouTube', Icono: IconoYouTube },
+              ].map(
+                ({ url, label, Icono }, i) =>
+                  url && (
+                    <motion.a
+                      key={label}
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={label}
+                      animate={{
+                        boxShadow: [
+                          '0 0 0px rgba(251,191,36,0.3)',
+                          '0 0 12px rgba(251,191,36,0.85)',
+                          '0 0 0px rgba(251,191,36,0.3)',
+                        ],
+                      }}
+                      transition={{ duration: 2.4, repeat: Infinity, delay: i * 0.3, ease: 'easeInOut' }}
+                      className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 via-yellow-500 to-amber-600 text-gray-900 transition active:scale-95"
+                    >
+                      <Icono size={18} />
+                    </motion.a>
+                  )
               )}
             </div>
           )}

@@ -543,12 +543,20 @@ function BarberoGaleria() {
         <p className="text-sm text-gray-500 dark:text-gray-400 flex-1">
           Foto, nombre, alias, especialidad y WhatsApp de contacto.
         </p>
-        <button
-          onClick={() => navigate('/barbero-perfil')}
-          className={`${chip} bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 shrink-0`}
-        >
-          Editar perfil
-        </button>
+        <div className="flex flex-col gap-1.5 shrink-0">
+          <button
+            onClick={() => navigate('/barbero-perfil')}
+            className={`${chip} bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300`}
+          >
+            Editar perfil
+          </button>
+          <button
+            onClick={() => navigate('/barbero-estilos')}
+            className={`${chip} bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300`}
+          >
+            Mis estilos
+          </button>
+        </div>
       </div>
 
       {/* ---- Galería de trabajos ---- */}

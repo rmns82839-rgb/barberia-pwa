@@ -26,6 +26,35 @@ export default async function handler(req, res) {
       return res.status(200).json({ imagenes })
     }
 
+    // ---- Lista de estilos de corte (look-book), con los barberos que los hacen ----
+    if (req.query.estilos) {
+      const estilos = await sql`
+        SELECT
+          e.id, e.nombre, e.descripcion, e.portada_url,
+          COALESCE(
+            json_agg(
+              json_build_object('id', b.id, 'nombre', b.nombre, 'alias', b.alias, 'foto', b.foto)
+            ) FILTER (WHERE b.id IS NOT NULL),
+            '[]'
+          ) AS barberos
+        FROM estilos_corte e
+        LEFT JOIN estilo_barberos eb ON eb.estilo_id = e.id
+        LEFT JOIN barberos b ON b.id = eb.barbero_id AND b.activo = true
+        GROUP BY e.id
+        ORDER BY e.creado_en DESC
+      `
+      return res.status(200).json({ estilos })
+    }
+
+    // ---- Fotos de un estilo de corte (para el carrusel) ----
+    if (req.query.estilo_imagenes) {
+      const imagenes = await sql`
+        SELECT id, imagen_url, orden FROM estilo_imagenes
+        WHERE estilo_id = ${req.query.estilo_imagenes} ORDER BY orden, id
+      `
+      return res.status(200).json({ imagenes })
+    }
+
     // ---- Productos (opcionalmente filtrados por categoria_id) ----
     const categoriaId = req.query.categoria_id
     const productos = categoriaId

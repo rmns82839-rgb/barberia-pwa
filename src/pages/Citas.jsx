@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Scissors, Calendar } from 'lucide-react'
 import { IconoWhatsApp } from '../components/IconosRedes.jsx'
@@ -23,6 +23,7 @@ function Citas() {
   const [avisoRespondido, setAvisoRespondido] = useState(false)
 
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
 
   useEffect(() => {
     if (cargandoAuth) return
@@ -34,9 +35,15 @@ function Citas() {
   useEffect(() => {
     fetch('/api/barberos')
       .then((res) => res.json())
-      .then((data) => setBarberos(data))
+      .then((data) => {
+        setBarberos(data)
+        const idPreseleccionado = searchParams.get('barbero')
+        if (idPreseleccionado && data.some((b) => String(b.id) === idPreseleccionado)) {
+          setBarberoSel(Number(idPreseleccionado))
+        }
+      })
       .catch(() => toast.error('No se pudieron cargar los barberos'))
-  }, [])
+  }, [searchParams])
 
   useEffect(() => {
     if (!barberoSel || !fecha) {

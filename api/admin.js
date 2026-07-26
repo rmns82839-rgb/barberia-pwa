@@ -515,6 +515,108 @@ export default async function handler(req, res) {
       return responseSuccess(res, { cliente: result[0] })
     }
 
+    // =========================================
+    // 15. ESTILOS DE CORTE (gestión admin — cualquier estilo)
+    // =========================================
+    if (action === 'estilos' && req.method === 'GET') {
+      const estilos = await sql`
+        SELECT
+          e.id, e.nombre, e.descripcion, e.portada_url, e.creado_por_barbero_id,
+          COALESCE(
+            json_agg(
+              json_build_object('id', b.id, 'nombre', b.nombre, 'alias', b.alias)
+            ) FILTER (WHERE b.id IS NOT NULL),
+            '[]'
+          ) AS barberos
+        FROM estilos_corte e
+        LEFT JOIN estilo_barberos eb ON eb.estilo_id = e.id
+        LEFT JOIN barberos b ON b.id = eb.barbero_id
+        GROUP BY e.id
+        ORDER BY e.creado_en DESC
+      `
+      return responseSuccess(res, { estilos })
+    }
+
+    if (action === 'estilos' && req.method === 'POST') {
+      const body = await leerBody(req)
+      const data = parseJSON(body)
+      if (!data) return responseError(res, 'JSON inválido')
+
+      const { nombre, descripcion, portada_url } = data
+      if (!nombre || !nombre.trim()) return responseError(res, 'Falta el nombre del estilo')
+
+      const nuevo = await sql`
+        INSERT INTO estilos_corte (nombre, descripcion, portada_url, creado_por_barbero_id)
+        VALUES (${nombre.trim()}, ${descripcion || null}, ${portada_url || null}, NULL)
+        RETURNING id, nombre, descripcion, portada_url
+      `
+      return responseSuccess(res, { estilo: nuevo[0] }, 201)
+    }
+
+    if (action === 'estilos' && req.method === 'PUT') {
+      const body = await leerBody(req)
+      const data = parseJSON(body)
+      if (!data) return responseError(res, 'JSON inválido')
+
+      const { id, nombre, descripcion, portada_url } = data
+      if (!id) return responseError(res, 'Falta id')
+
+      const actual = await sql`SELECT portada_url FROM estilos_corte WHERE id = ${id}`
+      if (actual.length === 0) return responseError(res, 'Estilo no encontrado', 404)
+      const portadaAnterior = actual[0].portada_url
+
+      const editado = await sql`
+        UPDATE estilos_corte
+        SET nombre = ${nombre?.trim() || nombre},
+            descripcion = ${descripcion !== undefined ? (descripcion || null) : null},
+            portada_url = ${portada_url !== undefined ? (portada_url || null) : portadaAnterior}
+        WHERE id = ${id}
+        RETURNING id, nombre, descripcion, portada_url
+      `
+      if (portadaAnterior && portada_url !== undefined && portadaAnterior !== portada_url) {
+        await borrarBlob(portadaAnterior)
+      }
+      return responseSuccess(res, { estilo: editado[0] })
+    }
+
+    if (action === 'estilos' && req.method === 'DELETE') {
+      const body = await leerBody(req)
+      const data = parseJSON(body)
+      if (!data) return responseError(res, 'JSON inválido')
+
+      const { id } = data
+      if (!id) return responseError(res, 'Falta id')
+
+      const imagenesExtra = await sql`SELECT imagen_url FROM estilo_imagenes WHERE estilo_id = ${id}`
+      const estilo = await sql`DELETE FROM estilos_corte WHERE id = ${id} RETURNING portada_url`
+      if (estilo.length === 0) return responseError(res, 'Estilo no encontrado', 404)
+
+      if (estilo[0].portada_url) await borrarBlob(estilo[0].portada_url)
+      for (const img of imagenesExtra) await borrarBlob(img.imagen_url)
+
+      return responseSuccess(res, { ok: true })
+    }
+
+    // ---- Asignar/quitar un barbero de un estilo (el admin decide quién lo hace) ----
+    if (action === 'estilo-asignar-barbero' && req.method === 'POST') {
+      const body = await leerBody(req)
+      const data = parseJSON(body)
+      if (!data) return responseError(res, 'JSON inválido')
+
+      const { estilo_id, barbero_id, asignar } = data
+      if (!estilo_id || !barbero_id) return responseError(res, 'Faltan estilo_id o barbero_id')
+
+      if (asignar) {
+        await sql`
+          INSERT INTO estilo_barberos (estilo_id, barbero_id) VALUES (${estilo_id}, ${barbero_id})
+          ON CONFLICT DO NOTHING
+        `
+      } else {
+        await sql`DELETE FROM estilo_barberos WHERE estilo_id = ${estilo_id} AND barbero_id = ${barbero_id}`
+      }
+      return responseSuccess(res, { ok: true })
+    }
+
     return responseError(res, 'Acción no reconocida', 400)
   } catch (error) {
     console.error('ERROR REAL:', error.message)
